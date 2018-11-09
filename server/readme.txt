@@ -1,1 +1,1 @@
-config.js ÅäÖÃ
+config.js é…ç½®
