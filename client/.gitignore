@@ -1,0 +1,15 @@
+###########忽略########### 
+.idea/
+build/
+library/
+local/
+temp/
+.vscode/
+packVersion/
+assets/test/
+assets/test.meta
+
+###########不忽略########### 
+!packagesDiff/*/build/
+!packagesDiff/*/local/
+
