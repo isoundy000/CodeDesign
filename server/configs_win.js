@@ -7,6 +7,8 @@ var SSS_SERVER_TYPE = "SSS_SERVER_TYPE";
 var SSP_SERVER_TYPE = "SSP_SERVER_TYPE";
 var WSK_SERVER_TYPE = "WSK_SERVER_TYPE";
 var DDZ_SERVER_TYPE = "DDZ_SERVER_TYPE";
+var QHB_SERVER_TYPE = "QHB_SERVER_TYPE";
+var HBSL_SERVER_TYPE = "HBSL_SERVER_TYPE";
 
 var ACCOUNT_PRI_KEY = "^&*#$%()@";
 var ROOM_PRI_KEY = "~!@#$(*&^%$&";
@@ -16,10 +18,10 @@ var LOCAL_IP = 'localhost';
 exports.mysql = function () {
 	return {
 		HOST: '127.0.0.1',
-		//                HOST:'120.77.56.190',
+		// HOST:'120.77.56.190',
 		USER: 'root',
-		PSWD: 'root',
-		DB: 'doudou',
+		PSWD: 'admin',
+		DB: 'db_game',
 		PORT: 3306
 	}
 }
@@ -57,7 +59,7 @@ exports.hall_server = function () {
 };
 
 //游戏服配置
-exports.game_server = function () {
+exports.mjServer = function () {
 	return {
 		SERVER_ID: "001",
 		SERVER_TYPE: MJ_SERVER_TYPE,
@@ -124,6 +126,30 @@ exports.sspServer = function () {
 		CLIENT_PORT: 10002,
 	};
 };
+
+//游戏服配置
+exports.wskServer = function () {
+	return {
+		SERVER_ID: "004",
+		SERVER_TYPE: WSK_SERVER_TYPE,
+		//暴露给大厅服的HTTP端口号
+		HTTP_PORT: 9006,
+		//HTTP TICK的间隔时间，用于向大厅服汇报情况
+		HTTP_TICK_TIME: 5000,
+		//大厅服IP
+		HALL_IP: LOCAL_IP,
+		FOR_HALL_IP: LOCAL_IP,
+		//大厅服端口
+		HALL_PORT: HALL_ROOM_PORT,
+		//与大厅服协商好的通信加密KEY
+		ROOM_PRI_KEY: ROOM_PRI_KEY,
+
+		//暴露给客户端的接口
+		CLIENT_IP: HALL_IP,
+		CLIENT_PORT: 10003,
+	};
+};
+
 //游戏服配置
 exports.ddzServer = function () {
 	return {
@@ -148,12 +174,12 @@ exports.ddzServer = function () {
 };
 
 //游戏服配置
-exports.wskServer = function () {
+exports.qhbServer = function () {
 	return {
-		SERVER_ID: "004",
-		SERVER_TYPE: WSK_SERVER_TYPE,
+		SERVER_ID: "006",
+		SERVER_TYPE: QHB_SERVER_TYPE,
 		//暴露给大厅服的HTTP端口号
-		HTTP_PORT: 9006,
+		HTTP_PORT: 9008,
 		//HTTP TICK的间隔时间，用于向大厅服汇报情况
 		HTTP_TICK_TIME: 5000,
 		//大厅服IP
@@ -166,6 +192,29 @@ exports.wskServer = function () {
 
 		//暴露给客户端的接口
 		CLIENT_IP: HALL_IP,
-		CLIENT_PORT: 10003,
+		CLIENT_PORT: 10005,
+	};
+};
+
+//游戏服配置
+exports.hbslServer = function () {
+	return {
+		SERVER_ID: "006",
+		SERVER_TYPE: HBSL_SERVER_TYPE,
+		//暴露给大厅服的HTTP端口号
+		HTTP_PORT: 9009,
+		//HTTP TICK的间隔时间，用于向大厅服汇报情况
+		HTTP_TICK_TIME: 5000,
+		//大厅服IP
+		HALL_IP: LOCAL_IP,
+		FOR_HALL_IP: LOCAL_IP,
+		//大厅服端口
+		HALL_PORT: HALL_ROOM_PORT,
+		//与大厅服协商好的通信加密KEY
+		ROOM_PRI_KEY: ROOM_PRI_KEY,
+
+		//暴露给客户端的接口
+		CLIENT_IP: HALL_IP,
+		CLIENT_PORT: 10006,
 	};
 };

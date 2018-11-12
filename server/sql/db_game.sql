@@ -350,6 +350,32 @@ CREATE TABLE `t_sss_rooms` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 -- ----------------------------
+-- Table structure for t_hbsl_rooms
+-- ----------------------------
+DROP TABLE IF EXISTS `t_hbsl_rooms`;
+CREATE TABLE `t_hbsl_rooms` (
+  `uuid` char(20) NOT NULL,
+  `id` char(8) NOT NULL,
+  `base_info` varchar(256) NOT NULL DEFAULT '0',
+  `create_time` int(11) NOT NULL,
+  `num_of_turns` int(11) NOT NULL DEFAULT '0',
+  `next_button` int(11) NOT NULL DEFAULT '0',
+  `user_id0` int(11) NOT NULL DEFAULT '0',
+  `user_icon0` varchar(128) NOT NULL DEFAULT '',
+  `user_name0` varchar(32) NOT NULL DEFAULT '',
+  `user_score0` int(11) NOT NULL DEFAULT '0',
+  `user_id1` int(11) NOT NULL DEFAULT '0',
+  `user_icon1` varchar(128) NOT NULL DEFAULT '',
+  `user_name1` varchar(32) NOT NULL DEFAULT '',
+  `user_score1` int(11) NOT NULL DEFAULT '0',
+  `ip` varchar(16) DEFAULT NULL,
+  `port` int(11) DEFAULT '0',
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uuid` (`uuid`),
+  UNIQUE KEY `id` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- ----------------------------
 -- Table structure for t_users
 -- ----------------------------
 DROP TABLE IF EXISTS `t_users`;
