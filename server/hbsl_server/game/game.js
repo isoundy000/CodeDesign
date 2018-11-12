@@ -194,6 +194,11 @@ var Game = BaseClass.extend({
 		return null;
 	},
 	fapai:function(){
+		for(let i = 0;i<this.arrPlayers.length;i++){
+			if(this.arrPlayers[i].userId != 0){
+				this.arrPlayers[i].isChuPai = false;
+			}
+		}
 		//在发牌的时候就确定比牌玩家数量
 		var playerCount = 0;
 		for(let i = 0;i < this.arrPlayers.length;i++){
@@ -206,8 +211,8 @@ var Game = BaseClass.extend({
 		this.roomInfo.state = GameState.GAME_START;
 		this.state = GameState.GAME_START;
 		//倒计时出牌
-		this.lastTime = 103000;//99秒理牌时间
-		this.timeoutId = setTimeout(this.outMaxPai,this.lastTime,this);
+		this.lastTime = 10000;//10秒理牌时间
+		this.timeoutId = setTimeout(this.randomSelectePai,this.lastTime,this);
 		//每秒发送当前剩余时间
 		this.timeId = setInterval(function(self){
 			self.lastTime -= 1000;
@@ -218,6 +223,16 @@ var Game = BaseClass.extend({
 				}
 			}
 		},1000,this);
+	},
+	randomSelectePai:function(self){
+		for(let i = 0;i<self.compareCount;i++){
+			if(!self.arrPlayers[i].isChuPai){
+				var userId = self.arrPlayers[i].userId;
+				self.quickSwing(userId,true);
+				userMgr.sendMsg(userId, 'random_selecte_push');
+			}
+		}
+
 	},
 	//计算总结果
 	calculateResult:function(){
