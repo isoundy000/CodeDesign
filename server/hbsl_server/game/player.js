@@ -1,9 +1,8 @@
-var BaseClass = require('../lib/BaseClass');
+var BaseClass = require('../../lib/BaseClass');
 var Player = BaseClass.extend({
 	Init:function(){
 		this.JS_Name = "Player";
-		this._animals = [];
-		this._dieAnimals= [];
+		this._aniColor = null;
 	},
 	initInfo:function(data){
 		if(data.disconnectOutTime){

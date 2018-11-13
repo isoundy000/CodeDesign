@@ -23,7 +23,7 @@ DEFINE.GameStatu = {
 狗（Dog）
 猪（Boar）
 */
-
+// 使用动物
 DEFINE.GameAnimal = {
 	Hunter : 0,//猎人
 	Ghost : 1,//鬼
@@ -36,10 +36,34 @@ DEFINE.GameAnimal = {
 	Cat : 8,//猫
 	Rat : 9,//鼠	
 };
-
-DEFINE.GameAniColor = {
+DEFINE.GameAniName = {
+	0:"Hunter",//猎人
+	1:"Ghost",//鬼
+	2:"Elephant",//象
+	3:"Lion",//狮
+	4:"Tiger",//虎
+	5:"Bear",//熊
+	6:"Wolf",//狼
+	7:"Dog",//狗
+	8:"Cat",//猫
+	9:"Rat",//鼠	
+};
+// 动物颜色
+DEFINE.GameAniSign = {
 	Black : 0,//黑
 	White : 1,//白
+	Mountain:10,//山
+	Water:20, 	//水
+	Fire:30,	//火
+	Hole:40,  	//洞
+};
+
+//游戏格子 row_x row_y col 
+DEFINE.GameGrid ={
+	IsNull : 0, //空格子
+	HaveAnimal :1,//翻盖后有动物
+	NotFlip : 2, //没有翻盖
+	IsSSHD : 3,//山水火洞
 };
 
 module.exports = DEFINE;

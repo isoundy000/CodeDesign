@@ -1,8 +1,13 @@
-var BaseClass = require('../lib/BaseClass');
+var BaseClass = require('../../lib/BaseClass');
 var Player = require('./player');
-var roomMgr = require('./roomMgr');
-var userMgr = require('./userMgr');
-var GameState = require("./define").GameStatu;
+var roomMgr = require('../roomMgr');
+var userMgr = require('../userMgr');
+var Define = require("../define");
+var Grid = require("./Grid");
+var GameState = Define.GameStatu;
+var GameAniSign = Define.GameAniSign;
+var GameAnimal = Define.GameAnimal;
+var GameGrid = Define.GameGrid;
 var userDB = require('../../DB/managers/userDBMgr');
 var crypto = require("../../utils/crypto");
 
@@ -36,112 +41,137 @@ var crypto = require("../../utils/crypto");
 var Game = BaseClass.extend({
 	Init:function(roomInfo){
 		this.JS_Name = "Game";
-		this.roomInfo = roomInfo;
-		this.conf = roomInfo.conf;
-		this.compareCount = 0;
-		this._cards = [];
-		this.forceEnd = false;
+		this._roomInfo = roomInfo;
+		this._conf = roomInfo.conf;
 
-		this.initParam();
 		//初始化房间信息
+		this.initParam();
 		this.initPlayer();
 		//初始化牌
-		//this.initCard();
 		//洗牌
 		this.shuffle();
 		//发牌
 		this.fapai();
 	},
 	startAgain:function(){
-		if(this.roomInfo.conf.numOfGames < this.roomInfo.conf.maxGames){
+		if(this._roomInfo.conf.numOfGames < this._roomInfo.conf.maxGames){
 			return;
 		}
 		this.initParam();
 		this.initPlayer();
 		this.shuffle();
 		this.fapai();
-		var seats = this.roomInfo.seats;
+		var seats = this._roomInfo.seats;
 		for(let i = 0; i < seats.length; ++i){
 			//开局时，通知前端必要的数据
 			let s = seats[i];
 			//通知当前是第几局
-			userMgr.sendMsg(s.userId,'game_num_push',this.roomInfo.numOfGames);
+			userMgr.sendMsg(s.userId,'game_num_push',this._roomInfo.numOfGames);
 			//通知游戏开始
 			userMgr.sendMsg(s.userId,'game_begin_push');
 		}
 	},
 	// 初始数据
 	initParam:function(roomInfo){
-		this.state = GameState.GAME_PREPARE;
+		this._drawMapTime = 3000;//3秒绘制地图
+		this._playerCount = 0;
+		this._operationSeat = 0;//当前操作座位编号
+		this._forceEnd = false;
+		this._mapData = [];
+		this._state = GameState.GAME_PREPARE;
 		//设置游戏状态为准备
-		this.roomInfo.state = GameState.GAME_PREPARE;
-		if(this.result){
-			delete this.result;
-		}
-		if(!this.allResult)
+		this._roomInfo.state = GameState.GAME_PREPARE;
+		if(!this._allResult)
 		{
-			this.allResult = []; 
+			this._allResult = []; 
 		}
-		this.compareCount = 0;
 	},
 	// 初始玩家
 	initPlayer:function(){
-		this.arrPlayers||(this.arrPlayers = []);
+		this._allPlayers||(this._allPlayers = []);
 		//创建玩家
-		var len = this.roomInfo.seats.length;
+		var len = this._roomInfo.seats.length;
 		for (var i = 0; i < len; i++) {
-			var player = (this.arrPlayers[i] || new Player());
-			player.initInfo(this.roomInfo.seats[i]);
-			this.arrPlayers[i] = player;
-			this.arrPlayers[i].JS_Name = this.roomInfo.seats[i].name;
-			this.arrPlayers[i].score = 0;
+			var player = (this._allPlayers[i] || new Player());
+			player.initInfo(this._roomInfo.seats[i]);
+			this._allPlayers[i] = player;
+			this._allPlayers[i].JS_Name = this._roomInfo.seats[i].name;
+			this._allPlayers[i].score = 0;
 		}
 	},
 	// 洗牌
 	shuffle:function(){
-		if(!this._cards){
-			this._cards = [];
+		if(!this._mapData){
+			this._mapData = [];
 		}
-		this._cards.length = 0;
-		var arrType = [];
-		var countPlayer = 0;
-		arrType = [0,1];
-
-		for(let i = 0;i < this.roomInfo.seats.length;i++){
-			if(this.roomInfo.seats[i].userId > 0){
-				countPlayer++;
-			}
-		}
+		this._mapData.length = 0;
+		// 动物
+		var animals = [];
 		//0黑,1白
-		for(let i = 0;i < arrType.length;i++){
+		for(let i = 0;i < 2;i++){
 			for(var j = 0; j < 10; j++){
-				var card = {
-					type:arrType[i],
+				var animal = {
+					type:i,
 					value:j
 				}
-				this._cards.push(card);
+				animals.push(animal);
 			}
 		}
-
-		var length = this._cards.length;
+		var length = animals.length;
 		for (var i = 0; i < length; i++) {
-			var lastIndex = this._cards.length - 1 - i;
+			var lastIndex = animals.length - 1 - i;
 	        var index = Math.floor(Math.random() * lastIndex);
-	        var t = this._cards[index];
-	        this._cards[index] = this._cards[lastIndex];
-	        this._cards[lastIndex] = t;
+	        var t = animals[index];
+	        animals[index] = animals[lastIndex];
+	        animals[lastIndex] = t;
 		}
+		//山水火土
+		var sshds = [GameAniSign.Mountain,GameAniSign.Water,GameAniSign.Fire,GameAniSign.Hole];
+		var length = sshds.length;
+		for (var i = 0; i < length; i++) {
+			var lastIndex = sshds.length - 1 - i;
+	        var index = Math.floor(Math.random() * lastIndex);
+	        var t = sshds[index];
+	        sshds[index] = sshds[lastIndex];
+	        sshds[lastIndex] = t;
+		}
+
+		var countAni = 0;
+		var countSshd = 0;
+		for(var x =0;x < 4;x++){
+			for(var y=0;y < 6;y++){
+				var grid = new Grid(x,y);
+				// 山火水洞
+				if((x==0&&y==2)||(x==3&&y==2)||(x==0&&y==3)||(x==3&&y==3)){
+					var sshd = {
+						type: sshds[countSshd],
+						value:-1,
+					};
+					grid.setSSHD(sshd);
+					grid.setGridState(GameGrid.IsSSHD);
+					this._mapData[x + "" + y] = grid;
+					countSshd++;
+					continue;
+				}
+				// 其他动物
+				grid.setAnimal(animals[countAni]);
+				grid.setGridState(GameGrid.NotFlip);
+				this._mapData[x + "" + y] = grid;
+				countAni ++;	
+			}
+		}
+		console.log(this._mapData);
 	},
 	//断线重连数据下发
 	playerComeBack:function(userId){
         var data = {
-            state:this.state,
-			maxGames:this.roomInfo.conf.maxGames,
-			numOfGames:this.roomInfo.numOfGames,
+            state:this._state,
+			maxGames:this._roomInfo.conf.maxGames,
+			numOfGames:this._roomInfo.numOfGames,
         };
 		data.seats = [];
-		for(var i = 0; i < this.roomInfo.seats.length; ++i){
-			var rs = this.roomInfo.seats[i];
+		for(var i = 0; i < this._roomInfo.seats.length; ++i){
+			var rs = this._roomInfo.seats[i];
 			var online = false;
 			if(rs.userId > 0){
 				online = userMgr.isOnline(rs.userId);
@@ -157,132 +187,125 @@ var Game = BaseClass.extend({
 			
 			data.seats.push(s);
 		}
-		if(this.state === GameState.GAME_PREPARE){
+		if(this._state === GameState.GAME_PREPARE){
 			
 		}
-		if(this.state === GameState.GAME_COMPARE){
-			if(this.chupaidata){
-				data.chupaidata = this.chupaidata;
+		if(this._state === GameState.GAME_COMPARE){
+			if(this._mapData){
+				data.mapData = this._mapData;
 			}
 		}
-		//
-		if(this.state === GameState.GAME_START){
-			data.holds = this.getHolds(userId);
+		// 操作颜色
+		if(this._state === GameState.GAME_START){
+			data.aniColor = this.getAniColor(userId);
 		}
 		//下发比牌数据和比牌结果
-		if(this.state === GameState.GAME_OVER){
-			data.comparePai = this.arrComparePai;
-			data.result = this.result;
-			if(this.roomInfo.conf.maxGames <= this.roomInfo.numOfGames){
-				data.singleResult = this.singleResult;
-				data.totalResult = this.totalResult;
+		if(this._state === GameState.GAME_OVER){
+			if(this._roomInfo.conf.maxGames <= this._roomInfo.numOfGames){
+				data.singleResult = this._singleResult;
+				data.totalResult = this._totalResult;
 			}
 			else{
-				data.singleResult = this.singleResult;
+				data.singleResult = this._singleResult;
 			}
 		}
         //同步整个信息给客户端
         userMgr.sendMsg(userId,'game_sync_push',data);
 	},
+	getAniColor:function(userId){
+		var len = this._allPlayers.length;
+		for(var i = 0; i < len; i++){
+			if(this._allPlayers[i].userId === userId){
+				return this._allPlayers[i]._aniColor;
+			}
+		}
+		return null;
+	},
 	getPlayers:function(userId){
-		var len = this.arrPlayers.length;
+		var len = this._allPlayers.length;
 		for(let i = 0; i < len; ++i){
-			if(this.arrPlayers[i].userId === userId){
-				return this.arrPlayers[i];
+			if(this._allPlayers[i].userId === userId){
+				return this._allPlayers[i];
 			}
 		}
 		return null;
 	},
 	fapai:function(){
-		for(let i = 0;i<this.arrPlayers.length;i++){
-			if(this.arrPlayers[i].userId != 0){
-				this.arrPlayers[i].isChuPai = false;
-			}
-		}
-		//在发牌的时候就确定比牌玩家数量
-		var playerCount = 0;
-		for(let i = 0;i < this.arrPlayers.length;i++){
-			if(this.arrPlayers[i].userId > 0){
-				playerCount++;
-			}
-		}
-		this.compareCount = playerCount;
+		userMgr.broacastInRoom('game_map_data_push',this._mapData);
 		//设置游戏状态为开始
-		this.roomInfo.state = GameState.GAME_START;
-		this.state = GameState.GAME_START;
-		//倒计时出牌
-		this.lastTime = 10000;//10秒理牌时间
-		this.timeoutId = setTimeout(this.randomSelectePai,this.lastTime,this);
-		//每秒发送当前剩余时间
-		this.timeId = setInterval(function(self){
-			self.lastTime -= 1000;
-			for(let i = 0;i<self.arrPlayers.length;i++){
-				if(self.arrPlayers[i].userId != 0){
-					let userId = self.arrPlayers[i].userId;
+		this._roomInfo.state = GameState.GAME_START;
+		this._state = GameState.GAME_START;
+		// 给客户端3秒绘制地图 然后开始游戏
+		this._timeDrawMapId = setTimeout(this.startGameMessage,this._drawMapTime,this);
+		this.startUpdate();
+	},
+	startUpdate(){
+		// 每秒发送当前剩余时间
+		this._timeId = setInterval(function(self){
+			for(let i = 0;i<self._allPlayers.length;i++){
+				if(self._allPlayers[i].userId != 0){
+					let userId = self._allPlayers[i].userId;
 					userMgr.sendMsg(userId,'out_card_lastTime',self.lastTime);
 				}
 			}
 		},1000,this);
 	},
-	randomSelectePai:function(self){
-		for(let i = 0;i<self.compareCount;i++){
-			if(!self.arrPlayers[i].isChuPai){
-				var userId = self.arrPlayers[i].userId;
-				self.quickSwing(userId,true);
-				userMgr.sendMsg(userId, 'random_selecte_push');
-			}
-		}
 
+	startGameMessage:function(self){
+		for(let i = 0;i<self._allPlayers.length;i++){
+			var userId = self._allPlayers[i].userId;
+			userMgr.sendMsg(userId,'game_begin_push');
+		}
 	},
 	//计算总结果
 	calculateResult:function(){
-		this.totalResult = [];//总结果
-		var len = this.allResult.length;
-		var allResult = this.allResult[0];
+		this._totalResult = [];//总结果
+		var len = this._allResult.length;
+		var allResult = this._allResult[0];
 		if(allResult){	//如果有第一局数据，则计算总结果
-			for(var i = 0; i < this.roomInfo.seats.length; i++){
+			for(var i = 0; i < this._roomInfo.seats.length; i++){
 				var temp = {};
-				let userId = this.roomInfo.seats[i].userId;
+				let userId = this._roomInfo.seats[i].userId;
 				if(userId <= 0){
 					continue;
 				}
 				temp.userId = userId;
-				temp.userName = this.roomInfo.seats[i].name;
+				temp.userName = this._roomInfo.seats[i].name;
 				temp.score = 0;
 				temp.win = 0;
 				temp.flat = 0;
 				temp.lose = 0;
-				this.totalResult.push(temp);
+				this._totalResult.push(temp);
 			}
-			for(var i = 0; i < this.allResult.length; i++){
-				for(let j = 0;j<this.allResult[i].length;j++){
-					for(let m = 0;m<this.totalResult.length;m++){
-						if(this.totalResult[m].userId === this.allResult[i][j].userId){
-							this.totalResult[m].score += this.allResult[i][j].score;
-							this.totalResult[m].win += this.allResult[i][j].win;
-							this.totalResult[m].flat += this.allResult[i][j].flat;
-							this.totalResult[m].lose += this.allResult[i][j].lose;
+			for(var i = 0; i < this._allResult.length; i++){
+				for(let j = 0;j<this._allResult[i].length;j++){
+					for(let m = 0;m<this._totalResult.length;m++){
+						if(this._totalResult[m].userId === this._allResult[i][j].userId){
+							this._totalResult[m].score += this._allResult[i][j].score;
+							this._totalResult[m].win += this._allResult[i][j].win;
+							this._totalResult[m].flat += this._allResult[i][j].flat;
+							this._totalResult[m].lose += this._allResult[i][j].lose;
 						}
 					}
 				}
 			}
 		}
 
-		for (var i = 0; i < this.arrPlayers.length; i++) {
-			let userId = this.arrPlayers[i].userId;
-			userMgr.sendMsg(userId,'game_result',this.totalResult);
+		for (var i = 0; i < this._allPlayers.length; i++) {
+			let userId = this._allPlayers[i].userId;
+			userMgr.sendMsg(userId,'game_result',this._totalResult);
 		}
 		//如果局数已够，则进行整体结算,记录战绩
 		if(allResult){
-			if (this.forceEnd) {
+			if (this._forceEnd) {
 				return;
 			}
-			this.forceEnd = true;
-            if(this.roomInfo.numOfGames > 1){
-                this.store_history(this.roomInfo);    
+			this._forceEnd = true;
+            if(this._roomInfo.numOfGames > 1){
+                this.store_history(this._roomInfo);    
             } 
         }
-		this.allResult = [];
+		this._allResult = [];
 	},
 
 	store_single_history:function(userId,history){
@@ -324,15 +347,15 @@ var Game = BaseClass.extend({
 	singleOver:function(result){
 		//添加每个人的分数
 		for(let i = 0;i<result.length;i++){
-			for(let j = 0;j<this.roomInfo.seats.length;j++){
-				if(result[i].userId === this.roomInfo.seats[j].userId){
-					result[i].allScore = this.roomInfo.seats[j].score;
+			for(let j = 0;j<this._roomInfo.seats.length;j++){
+				if(result[i].userId === this._roomInfo.seats[j].userId){
+					result[i].allScore = this._roomInfo.seats[j].score;
 				}
 			}
 		}
 		//通知客户端单局游戏结束
-		for (var i = 0; i < this.arrPlayers.length; i++) {
-			let userId = this.arrPlayers[i].userId;
+		for (var i = 0; i < this._allPlayers.length; i++) {
+			let userId = this._allPlayers[i].userId;
 			userMgr.sendMsg(userId,'game_over_push',result);
 		}
 	},
@@ -343,11 +366,11 @@ var Game = BaseClass.extend({
 		if(roomId === null){
 			return;
 		}
-		for(let i = 0;i<this.arrPlayers.length;i++){
-			if(this.arrPlayers[i].userId === userId){
-				this.arrPlayers[i].userId = 0;
+		for(let i = 0;i<this._allPlayers.length;i++){
+			if(this._allPlayers[i].userId === userId){
+				this._allPlayers[i].userId = 0;
 			}
-			if(this.arrPlayers[i].userId > 0){
+			if(this._allPlayers[i].userId > 0){
 				havePlayer = true;
 			}
 		}
@@ -361,11 +384,11 @@ var Game = BaseClass.extend({
 	//扣除钻石
 	doGameOver:function(){
 		//把自动出牌的定时器关掉
-		clearInterval(this.timeId);
-		clearTimeout(this.timeoutId);
+		clearInterval(this._timeId);
+		clearTimeout(this._timeDrawMapId);
 
 		this.calculateResult();
-		var roomId = roomMgr.getUserRoom(this.arrPlayers[0].userId);
+		var roomId = roomMgr.getUserRoom(this._allPlayers[0].userId);
 		var roomInfo = roomMgr.getRoom(roomId);
 		var self = this;
 		if(roomId == null){
@@ -400,6 +423,11 @@ var Game = BaseClass.extend({
 			roomMgr.destroy(roomId);
         },0);
 	},
+
 });
 
+
+
 module.exports = Game;
+var game = new Game({conf:{},seats:[{userId : 1},{userId : 2}] });
+

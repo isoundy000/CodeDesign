@@ -1,5 +1,5 @@
 //var db = require('../utils/db');
-var lrRoomDB = require('../DB/managers/lrRoomDBMgr');
+var lrRoomDB = require('../DB/managers/hbslRoomDBMgr');
 var userDB = require('../DB/managers/userDBMgr');
 
 var rooms = {};
