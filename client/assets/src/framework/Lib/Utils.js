@@ -65,4 +65,23 @@ cc.Class({
         }, node);
     },
     
+    // // NodeEvent
+    // // 负责所有节点事件的注册和发送
+    // // 整个游戏统一使用这一个
+    // /**
+    //  * @param message
+    //  * @param callback
+    //  * @param target
+    //  * @param useCapture
+    //  */
+    // window.addNodeEventListener = function (message, callback, target, useCapture) {
+    //     cc.director.on(message, callback, target, useCapture)
+    // };
+    // /**
+    //  * @param message
+    //  * @param detail
+    //  */
+    // window.dispatchNodeEvent = function (message, detail) {
+    //     cc.director.emit(message, detail)
+    // };
 });
