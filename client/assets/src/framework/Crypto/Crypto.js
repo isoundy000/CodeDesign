@@ -165,4 +165,10 @@ module.exports = {
         return retString;
     },
 
+    decodeString: function(string){
+        return unescape(cc.Codec.Base64.decode(string));
+    },
+    decodeAsArray: function(string){
+        return unescape(cc.Codec.Base64.decodeAsArray(string));
+    },
 }
