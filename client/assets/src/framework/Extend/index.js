@@ -1,1 +1,2 @@
-// require('');
+require('./CCExtend');
+require('./JSExtend');
