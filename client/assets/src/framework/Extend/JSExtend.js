@@ -142,9 +142,14 @@ js.isNullObject = function(obj){
 * @param value 
 * return true false
 */
+// js.isValid = function (value) {
+//     return !this.isUndefined(value) && !this.isNull(value);
+// };
+
 js.isValid = function (value) {
-    return !this.isUndefined(value) && !this.isNull(value);
+    return !(obj === null || obj === undefined || obj === NaN);
 };
+
 
 /*
 * cc.js.dump(obj,des)
@@ -194,7 +199,19 @@ js.getLocalTime = function(){
 js.getLogTime = function(){
     return (new Date()).Format("hh:mm:ss.S");
 };
-
+// 替换转换的类型
+js.replace= function(...args){
+    let arr = [].slice.call(arguments),
+    fmt = arr.shift(),
+    i = 0;
+    return fmt.replace(/%(\w)?(\d)?([dfsx])/ig, (_, a, b, c)=>{
+        let s = b ? new Array(b - 0 + 1).join(a || "") : "";
+        if (c == "d") s += parseInt(arr[i++]);
+        if (c == "f") s += parseFloat(arr[i++]);
+        else if (c == "s") s += arr[i++];
+        return b ? s.slice(b * -1) : s;
+    })
+};
 
 
 /*
