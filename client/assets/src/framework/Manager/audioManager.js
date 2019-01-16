@@ -18,11 +18,15 @@ module.exports = {
         }
     },
     /**
-     * 通过url找资源
+     * 去掉 .mp3
      * @param rul
      */
     getUrl:function(url){
-        return cc.url.raw("resources/" + url);
+        var i = url.lastIndexOf(".mp3");
+        if (i>-1) {
+            return url.substring(0, i);
+        }
+        return url;
     },
     /**
      * 播放url资源
@@ -33,7 +37,9 @@ module.exports = {
         if(this.bgMusicId >= 0){
             cc.audioEngine.stop(this.bgMusicId);
         }
-        this.bgMusicId = cc.audioEngine.play(audioUrl,true,this.bgMusicVloume);
+        cc.loader.loadRes(audioUrl, cc.AudioClip, (err, clip)=>{
+            this.bgMusicId = cc.audioEngine.play(clip,true,this.bgMusicVloume);
+        });
     },
     /**
      * 暂停背景音乐
@@ -58,9 +64,11 @@ module.exports = {
      * @param rul
      */
     playVoice(url){
-        var audioUrl = this.getUrl(url);
         if(this.voiceVloume > 0){
-            var audioId = cc.audioEngine.play(audioUrl,false,this.voiceVloume);    
+            var audioUrl = this.getUrl(url);
+            cc.loader.loadRes(audioUrl, cc.AudioClip, (err, clip)=>{
+                cc.audioEngine.play(clip,false,this.voiceVloume);
+            });
         }
     },
 
