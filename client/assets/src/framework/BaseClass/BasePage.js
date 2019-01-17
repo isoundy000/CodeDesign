@@ -55,15 +55,23 @@ cc.Class({
            cc.log(`[page]preload: ${this.__classname__}`);
         }
     },
+
+
+    // 子类onEnable this._super()
     onEnable: function () {
         if(!CC_EDITOR) {
            cc.log(`[page]onEnable: ${this.__classname__}`);
         }
+        if(this._registerEvent)this._registerEvent();
+        if(this._startInterval)this._startInterval();
     },
+    // 子类onDisable this._super()
     onDisable: function () {
         if(!CC_EDITOR) {
            cc.log(`[page]onDisable: ${this.__classname__}`);
         }
+        if(this._unregisterEvent)this._unregisterEvent();
+        if(this._stopInterval)this._stopInterval();
     },
     onDestroy: function() {
         if (this.pageAnimation) {
@@ -79,7 +87,7 @@ cc.Class({
             this.node.active = true;
         } else {
             var clipName = PageAnimation[this.pageInAnimation];
-            this.pageAnimation.addClip(GConfig.PageAnimation[clipName]);
+            this.pageAnimation.addClip(GDataMgr.PageAnimation[clipName]);
             this.pageAnimation.play(clipName);
         }
     },
@@ -88,8 +96,28 @@ cc.Class({
             this.node.active = false;
         } else {
             var clipName = PageAnimation[this.pageOutAnimation];
-            this.pageAnimation.addClip(GConfig.PageAnimation[clipName]);
+            this.pageAnimation.addClip(GDataMgr.PageAnimation[clipName]);
             this.pageAnimation.play(clipName);
         }
     },
+    // 强制销毁不放回缓存
+    forceDestroy(callBack){
+        GPageMgr.forceDestroyPage(this.node,callBack);
+    },
+    closePage(callBack){
+        GPageMgr.closePage(this.node,callBack);
+    },
+
+    /*
+    _startInterval(){
+        if(this._autoInterval){
+            if(this._interval) clearInterval(this._interval);
+            this._interval = setInterval(()=>{
+            },x*1000);
+        }
+    },
+    _stopInterval(){
+        if(this._interval) clearInterval(this._interval);
+    },
+    */
 });

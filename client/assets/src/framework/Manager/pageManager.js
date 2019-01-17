@@ -37,7 +37,16 @@ let PageManager = {
 	        if(callBack)callBack(temp);
 	    });
     },
-    closePage(pageName,callBack){
+    closePage(page,callBack){
+    	let pageName=null;
+    	if (page && typeof page === 'object') {
+	        pageName = page.name || page.node.name;
+	    }else if(page && typeof page === 'string'){
+	    	pageName = page;
+	    }else{
+	    	cc.assert("closePage page is error ",page);
+	    	return;
+	    }
     	for (var i = PageManager.pageList.length - 1; i >= 0; i--) {
 	        var temp = PageManager.pageList[i];
 	        if (temp && temp.name === pageName) {
@@ -47,6 +56,31 @@ let PageManager = {
 	            PageManager.pageList.splice(i, 1);
 	            var pageScript = temp.getComponent("basePage");
 		        if(pageScript)pageScript.playPageOut();
+	            if(callBack)callBack();
+	            return;
+	        }
+	    }
+    },
+    //force
+    forceDestroyPage(page,callBack){
+    	let pageName=null;
+    	if (page && typeof page === 'object') {
+	        pageName = page.name || page.node.name;
+	    }else if(page && typeof page === 'string'){
+	    	pageName = page;
+	    }else{
+	    	cc.assert("forceDestroy page is error ",page);
+	    	return;
+	    }
+    	for (var i = PageManager.pageList.length - 1; i >= 0; i--) {
+	        var temp = PageManager.pageList[i];
+	        if (temp && temp.name === pageName) {
+	            temp.active = false;
+	            temp.removeFromParent(true);
+	            PageManager.pageList.splice(i, 1);
+	            var pageScript = temp.getComponent("basePage");
+		        if(pageScript)pageScript.playPageOut();
+		        temp.destroy();
 	            if(callBack)callBack();
 	            return;
 	        }
