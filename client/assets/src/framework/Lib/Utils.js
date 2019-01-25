@@ -34,7 +34,7 @@ cc.Class({
             },
             onKeyReleased: function(keyCode, event){
                 if(keyCode == cc.KEY.back){
-                    JYL.alert.show('提示','确定要退出游戏吗？',function(){
+                    H2O.alert.show('提示','确定要退出游戏吗？',function(){
                         cc.game.end();
                     },true);
                 }

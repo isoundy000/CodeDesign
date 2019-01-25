@@ -433,3 +433,214 @@
     window.GQuadTree = QuadTree;
 
 }());
+
+
+
+/*
+    使用方法
+    main.ts
+const {ccclass, property} = cc._decorator;
+@ccclass
+export default class Main extends cc.Component {
+    @property(cc.Node)
+    public nodeFab: cc.Node = null;
+    private nodes: Array<cc.Node> = [];
+    private tree: GQuadTree<cc.Node> = null;
+    start () {
+        var bounds = {
+            x: -375,
+            y: -667,
+            width: 750,
+            height: 1334
+        }
+        this.tree = new GQuadTree(bounds, true);
+
+        //生成2000个随机节点
+        for (let i = 0; i < 2000; i++) {
+            let newNode = cc.instantiate(this.nodeFab);
+            newNode.x = Math.floor(Math.random() * 750) - 750/2;
+            newNode.y = Math.floor(Math.random() * 1334) - 1334/2;
+            this.node.addChild(newNode);
+            this.nodes.push(newNode);
+            let size =  Math.floor(Math.random() * 10) + 10;
+            newNode.width = size;
+            newNode.height = size;
+        }
+        this.tree.insert(this.nodes);
+        window.TreeMgr = this.tree;
+    }
+    updateTree(){
+        this.tree.clear();
+        this.tree.insert(this.nodes);
+    };
+    update (dt) {
+        this.updateTree();
+    }
+}
+    nodeFab.ts
+const {ccclass, property} = cc._decorator;
+@ccclass
+export default class blockFab extends cc.Component {
+    onLoad () {
+        // cc.director.getCollisionManager().enabled = true;
+        // cc.director.getCollisionManager().enabledDebugDraw = true;
+    };
+    _x=1;
+    _y=1; 
+    start () {
+        var collider = this.node.getComponent(cc.BoxCollider);
+        collider.size = this.node.getContentSize();
+        collider.world.aabb.width = this.node.getContentSize().width;
+        collider.world.aabb.height = this.node.getContentSize().height;
+    };
+    onCollisionEnter(other, self) {
+        this.node.color = cc.Color.RED;
+    };
+    onCollisionStay(other,self) {
+    };
+    onCollisionExit() {
+        this.node.color = cc.Color.WHITE;
+    };
+    update (dt) {
+        let speed = Math.random()*10;
+        if(this.node.x > 375){
+            this._x = -1;
+        }
+         if(this.node.x < -375){
+            this._x = 1;
+        }
+        if(this.node.y > 667){
+            this._y = -1;
+        }
+        if(this.node.y < -667){
+            this._y = 1;
+        }
+        this.node.x += this._x*speed;
+        this.node.y += this._y*speed;
+
+        var arr = TreeMgr.retrieve(this.node);
+        let selfBoxCollider = this.node.getComponent(cc.BoxCollider);
+        var selfAabb = selfBoxCollider.world.aabb;
+        selfAabb.x = this.node.x;
+        selfAabb.y = this.node.y;
+        for (var i = 0; i < arr.length; ++i)
+        {
+            if(arr[i] === this.node)continue;
+            let otherBoxCollider = arr[i].getComponent(cc.BoxCollider);
+            var otherAabb = otherBoxCollider.world.aabb;
+            if(cc.Intersection.rectRect(selfAabb, otherAabb)){
+                this.onCollisionEnter(otherBoxCollider,selfBoxCollider);
+                break;
+            }
+            else{
+                this.onCollisionExit();
+            }
+        }
+    };
+    onDisable () {
+        cc.director.getCollisionManager().enabled = false;
+        cc.director.getCollisionManager().enabledDebugDraw = false;
+    }
+}
+
+*/
+
+
+/*
+    摄像机的使用
+    放大缩小地铁 移动摄像机 和截屏
+    属性说明：
+    cullingMask：将决定这个摄像机用来渲染场景的哪些部分 这是在ccc中定义的分组。
+    zoomRatio：指定摄像机的缩放比例, 值越大显示的图像越大。
+    clearFlags：指定渲染摄像机时需要做的清除操作。
+    Color当指定了摄像机需要清除颜色的时候，摄像机会使用设定的背景色来清除场景。
+    depth摄像机深度，用于决定摄像机的渲染顺序。值越大，则摄像机越晚被渲染。
+    Texture如果设置了 targetTexture，那么摄像机渲染的内容不会输出到屏幕上，而是会渲染到 targetTexture 上。
+
+    事例：
+    多点触摸控制缩放，单点触摸移动，连续两次截屏
+    先定义分组 项目-设置-分组 增加分组 actor
+    创建三个节点 根节点root分组定义为actor 在root下挂一个精灵节点 创建相机节点
+    设置主相机 cullingMask 不包含 actor
+    设置自定义相机 cullingMask 包含 actor
+    创建脚本 
+    cc.Class({
+        extends: cc.Component,
+        properties: {
+            canvas: cc.Node,
+            camera: {
+                default: null,
+                type: cc.Node
+            },
+            root: {
+                default: null,
+                type: cc.Node
+            },
+        },
+        // use this for initialization
+        onLoad: function () {
+            var self = this, parent = this.node.parent;
+            self.clickTime = null;
+            self.canvas.on(cc.Node.EventType.TOUCH_START, function (event) {
+                    if(self.clickTime){
+                        let deltaTime = new Data().getTime() - self.clickTime;
+                        if(deltaTime <500){
+                            //截屏见demo
+                            /*
+                            let texture = new cc.RenderTexture();
+                            let gl = cc.game._renderContext;
+                            texture.initWithSize(cc.visibleRect.width, cc.visibleRect.height, gl.STENCIL_INDEX8);
+                            this.camera.targetTexture = texture;
+                            this.texture = texture;
+                            this.camera.render();
+                            let data = this.texture.readPixels();
+                            //* /
+                        }else{
+                            self.clickTime = new Data().getTime();
+                        }
+                    }else{
+                        self.clickTime = new Data().getTime();
+                    }
+
+                },self.node);
+
+            self.canvas.on(cc.Node.EventType.TOUCH_MOVE, function (event) {
+                var touches = event.getTouches();
+                if (touches.length >= 2) {
+                    var touch1 = touches[0], touch2 = touches[1];
+                    var delta1 = touch1.getDelta(), delta2 = touch2.getDelta();
+                    var touchPoint1 = parent.convertToNodeSpaceAR(touch1.getLocation());
+                    var touchPoint2 = parent.convertToNodeSpaceAR(touch2.getLocation());
+                    //缩放
+                    var distance = touchPoint1.sub(touchPoint2);
+                    var delta = delta1.sub(delta2);
+                    var scale = 1;
+                    let camera = self.camera.getComponent(cc.Camera);
+                    if (Math.abs(distance.x) > Math.abs(distance.y)) {
+                        scale = (distance.x + delta.x) / distance.x * camera.zoomRatio;
+                    }
+                    else {
+                        scale = (distance.y + delta.y) / distance.y * camera.zoomRatio;
+                    }
+                    camera.zoomRatio = scale < 0.1 ? 0.1 : scale;
+                }
+                else{
+                    var touch1 = touches[0];
+                    var delta = touch1.getDelta();
+                    self.camera.x -= delta.x;
+                    self.camera.y -= delta.y;
+                    // self.camera.position.add(delta);
+                    // let camera = self.camera.getComponent(cc.Camera);
+                    // camera.zoomRatio ++;
+                }
+            }, self.node);
+        },
+        
+        setMacroCulling: function (enable) {
+            if (cc.macro.ENABLE_CULLING === enable || CC_JSB) return;
+            cc.macro.ENABLE_CULLING = enable;
+            cc.renderer.childrenOrderDirty = true;
+        },
+    });
+
+*/

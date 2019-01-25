@@ -1,6 +1,6 @@
 
-var JYL = {
+var H2O = {
 	
 }
-window.JYL = JYL;
-module.exports = JYL;
+window.H2O = H2O;
+module.exports = H2O;

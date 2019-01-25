@@ -15,7 +15,7 @@ var http = {
     sendRequest: function (path,data,handler,extraUrl,isPost) {
     	dispatchNodeEvent("showNetWait");
         if(extraUrl === null){
-            extraUrl = cc.sys.localStorage.getItem("GateWayAddress") || JYL.GATE_DEFAULT_GATEWAY_ADDRESS;
+            extraUrl = cc.sys.localStorage.getItem("GateWayAddress") || H2O.GATE_DEFAULT_GATEWAY_ADDRESS;
         }
         //创建xhr
         let xhr = cc.loader.getXMLHttpRequest();
@@ -113,5 +113,5 @@ var http = {
     },
 };
 
-JYL.GHttp = http;
+H2O.GHttp = http;
 module.exports = http;
