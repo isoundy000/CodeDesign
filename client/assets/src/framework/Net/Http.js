@@ -35,6 +35,7 @@ var http = {
         if(isPost){
             xhr.open("POST", extraUrl);
             xhr.setRequestHeader("Content-Type", "application/json;charset=utf-8");
+            xhr.setRequestHeader('Access-Control-Allow-Origin', 'http://baidu.com');
         }else{
             xhr.open("GET",requestURL, true);
             if (cc.sys.isNative){

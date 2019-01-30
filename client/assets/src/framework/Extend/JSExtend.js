@@ -145,11 +145,14 @@ js.isNullObject = function(obj){
 // js.isValid = function (value) {
 //     return !this.isUndefined(value) && !this.isNull(value);
 // };
-
+//有效
 js.isValid = function (value) {
     return !(obj === null || obj === undefined || obj === NaN);
 };
-
+//无效
+js.isInvalid = function(){
+    return (obj === null || obj === undefined || obj === NaN);
+};
 
 /*
 * cc.js.dump(obj,des)
@@ -213,10 +216,8 @@ js.replace= function(...args){
     })
 };
 
-
-/*
-// 去除获取到的协议对象的Undefined和空的{}、[]
-cc.js.clearUndefinedAndEmptyTable = function(obj) {
+// 去除protobuf协议中的Undefined和空的{}、[]
+js.clearUndefinedAndEmptyTable = function(obj) {
     for (let key in obj) {
         if (obj.hasOwnProperty(key)) {
             let value = obj[key];
@@ -235,7 +236,7 @@ cc.js.clearUndefinedAndEmptyTable = function(obj) {
     }
 };
 // 克隆一个对象({}或[])
-cc.js.cloneTable = function (obj) {
+js.cloneTable = function (obj) {
     if (!this.isTable(obj))
         return obj;
     let newObj = this.newTable(obj);
@@ -246,7 +247,7 @@ cc.js.cloneTable = function (obj) {
     }
     return newObj;
 };
-cc.js.newTable = function (obj) {
+js.newTable = function (obj) {
     if (this.isArray(obj)) {
         return [];
     } else if (this.isObject(obj)) {
@@ -255,33 +256,119 @@ cc.js.newTable = function (obj) {
     return null;
 };
 // 检查object有没有某个key(没有就赋值为{})并返回value
-cc.js.checkKeyAndSetObj = function (obj, key) {
-    if (!this.isValid(obj[key]))
+js.checkKeyAndSetObj = function (obj, key) {
+    if (this.isInvalid(obj[key]))
         obj[key] = {};
     return obj[key];
 };
 // 检查object有没有某个key(没有就赋值为[])并返回value
-cc.js.checkKeyAndSetAry = function (obj, key) {
-    if (!this.isValid(obj[key]))
+js.checkKeyAndSetAry = function (obj, key) {
+    if (this.isInvalid(obj[key]))
         obj[key] = [];
     return obj[key];
 };
 // 检查并返回布尔值
-cc.js.checkBool = function (bol) {
+js.checkBool = function (bol) {
     if ("boolean" !== typeof bol)
         return false;
     return bol;
 };
 // 检查并返回数字
-cc.js.checkNumber = function (num) {
+js.checkNumber = function (num) {
     if ("number" !== typeof num)
         return 0;
     return num;
 };
 // 检查并返回字符串
-cc.js.checkString = function (str) {
+js.checkString = function (str) {
     if ("string" !== typeof str)
         return "";
     return str;
 };
+// 是不是空字符串
+js.isEmptyStr = function(str){
+    if (this.isInvalid(str))
+        return true;
+    return str.length < 1;
+};
+
+
+/**
+ * 剪短字符串
+ * @param str
+ * @param long(汉字长度)
+ * @returns {string}
+ */
+js.cutString = function (str, long) {
+    let lenMax = long * 2;
+    let lenCur = 0;
+    let emojiI = 0; //粗暴的只处理成由两个len组成的emoji
+    let strI = str.length;
+    let endI = 0;
+    for (let i = 0; i < str.length; i++) {
+        if (str.charCodeAt(i) > 0xA000) {
+            emojiI++;
+            endI = 1;
+            if (emojiI%2===0) {
+                // 是emoji(也当成一个汉字长度处理)
+                lenCur += 2;
+                endI = lenCur > lenMax ? 0 : 2;
+            }
+        } else if (str.charCodeAt(i) > 255) {
+            // 是汉字
+            lenCur += 2;
+            emojiI = 0;
+            endI = 1;
+        } else {
+            lenCur++;
+            emojiI = 0;
+            endI = 1;
+        }
+        if (lenCur === lenMax) {
+            strI = i + 1;
+            break;
+        } else if (lenCur > lenMax) {
+            strI = emojiI%2===0 ? i-1 : i;
+            break;
+        }
+    }
+    return strI < str.length ? str.substr(0, strI - endI) + "…" : str;
+};
+/*
+* 数字转换 
+* num 数字
+* useChinese 使用中文
+* dot 小数点后多少位
 */
+js.formatNumber = function(num,useChinese,dotCount){
+    if (this.isEmptyStr(num)) return '';
+    let dividend = 10000; 
+    if (num <= dividend) return ''+num;
+    let en = ['W','Y','WY'];
+    let zh = ['万', '亿', '万亿'];
+    let units = en;        
+    if(useChinese){
+        units = zh;
+    }
+    let decimal = 2;
+    if(dotCount)decimal = dotCount;
+
+    let _str = '';
+    let curentUnit = units[0]; //转换单位 
+    let _strLen = (tempNum)=>{ 
+        let _strNum = tempNum.toString(); 
+        let _index = _strNum.indexOf("."); 
+        let _newNum = _strNum; 
+        if(_index!=-1) _newNum = _strNum.substring(0,_index); 
+        return _newNum.length
+    }
+    
+    for (let i = 0; i <4; i++) { 
+        curentUnit = units[i] 
+        if(_strLen(num)<5)
+            break; 
+        num = num / dividend; 
+        _str = num.toFixed(decimal)+curentUnit;
+    }
+    return _str;
+};
