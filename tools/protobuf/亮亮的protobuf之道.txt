@@ -1,0 +1,147 @@
+1.为什么要自己下载源码来编译
+	在做creator项目时，我需要把.proto文件导成.js格式
+	首先把官网给的release包拿来直接使用
+		下载地址: https://github.com/google/protobuf/releases
+	结果发现没有 fromObject 接口 不好用。
+	而且服务器希望客户端把默认数据也发送过去(虽然这会增大网络流量 但需求如此嘛)
+	所以只能把源码拿来改造改造。
+
+2.下载源码
+	地址: https://github.com/google/protobuf/releases
+	选择 protobuf-js-3.5.1.zip  (或者protobuf-js-3.5.1.tar.zip  或者 protobuf-all-3.5.1.tar.zip)
+	然后下载并安装CMake
+		去官网下载最新版 如 cmake-3.11.1-win64-x64.msi
+		(加入到环境变量后 在cmd中还是说 'cmake'不是内部或外部命令 无奈)
+	按照\protobuf-3.5.1\cmake\README.md文件的描述
+		英文看不懂 最终找到这篇好文 https://www.cnblogs.com/xuhuajie/p/6890252.html
+	1.在\protobuf-3.5.1\cmake\下创建 build目录 build\solution目录
+		进到\protobuf-3.5.1\cmake\build\solution
+	2.打开命令窗口
+		输入cmake发现不能用 于是输入
+			(先找到cmake的bin目录 例如 C:\ProgramWork\CMake\bin)
+			set PATH=%PATH%;C:\ProgramWork\CMake\bin
+			然后再输入cmake发现可以用了
+	3.然后输入 
+		cmake -G "Visual Studio 15 2017 Win64" -Dprotobuf_BUILD_TESTS=OFF -DCMAKE_INSTALL_PREFIX=../../../../install ../..
+		(其中 Visual Studio的版本根据自己安装的情况来 输入不正确它也会自己提示)
+		(必须保证solution目录下为空 不然会出错)
+	4.打开 protobuf.sln 编译成 release 模式即可
+	5.编译完后把Release目录下的 protoc.exe 复制到自己需要的地方去。
+	6.导出结果与官网给的release包导出结果完全一致。
+
+3.改造js导出
+	1.在\protobuf-3.5.1\src目录拿去改造
+		线索就是 fromObject 与 toObject
+			void GenerateClassToObject(
+			void GenerateClassFieldToObject(
+			void GenerateClassFromObject(
+			void GenerateClassFieldFromObject(
+			GenerateClassSerializeBinaryField
+
+	2.在 GenerateClassToObject(options, printer, desc); 上面或下面 增加一句:
+		GenerateClassFromObject(options, printer, desc);
+		如此导出的js方法里面就有 fromObject 接口了。
+	3.发送默认数据改造(更进一步 有数据(包括默认值)才序列化出来)
+		在 void Generator::GenerateClassSerializeBinaryField( 方法里面 把所有判断默认条件的语句都注释掉即可
+		关键字搜索
+			// "  }\n    改成  "  //}\n
+			// "  if (f  改成  "  //if (f
+			"  if (f  全部改成  "  if (f != null)
+		序列化时,会获取值时，没有会取默认值，也得改
+			在 void Generator::GenerateClassSerializeBinaryField( 中
+				修改 HasFieldPresence 为 HasFieldPresenceSerializeBinary
+				HasFieldPresenceSerializeBinary就是把HasFieldPresence复制过来 然后把最后一个条件直接改成true即可
+				即
+													||
+					field->file()->syntax() == FileDescriptor::SYNTAX_PROTO2;
+				变成
+													|| true;
+
+				即要 f = (jspb.Message.getField( 方式
+				不要 f = message.get$name$( 方式
+
+	4.重新编译
+	5.然后发现缺少定义 goog.isDef
+		搜索 var global = Function('return this')();
+		在它下面加上
+			printer->Print("goog.isDef = function(a){return a!=null};\n\n");
+
+	6.还发现缺少 goog.array.map
+		搜索 goog.array.map 改成 goog.arrayMap
+		然后在 定义 goog.isDef 的下面加上
+			printer->Print("goog.arrayMap = function(a,b,c){for(var d=a.length,e=Array(d),f=a,g=0;g<d;g++)g in f&&(e[g]=b.call(c,f[g],g,a));return e};\n\n");
+
+
+	7.目的达成
+
+
+4.再改造的彻底一点
+	去掉注释 然导出文本体积小一些 哈哈
+
+5.还有一个坑。会把不规范的命名给他规范了
+	比如 一个字段名为 user_info  会导成 useInfo
+	还有一些保留字 比如break char long等等 会主动加前缀pb_
+	然而这样当然很不行。
+	故又得改之。
+
+
+6.使用中发现 toObject 按理说应该把所有的 key 都给个默认值
+	然而引用其他的message时 没有值 就是undefined 希望默认给了空的{}
+	故又得改之。
+		搜索 GenerateClassToObject
+		发现 GenerateClassFieldToObject
+		发现 printer->Print("(f = msg.get$getter$()) && "
+					"$type$.toObject(includeInstance, f)",
+		修改 printer->Print("((f = msg.get$getter$()) && "
+					"$type$.toObject(includeInstance, f)) || {}",
+
+
+7.与服务器联调时发现 repeated int64 结构 我这边解不出来
+	查找后发现 他们使用的写入方式更落后一些。但没法得改造成跟他们一样的。
+	write和read 我这边采用的是Packed 服务器还是用的Repeated
+	故改造成我这边写也用Repeated 但read没有对应的Repeated 得自己写。详见 js_generator.cc
+
+8.当proto需要引起其他proto时，由 require("../in/xxx_pb") 改造成 require("xxx_pb")
+	详见 js_generator.cc
+
+注: 外面的 js_generator.cc 是 protobuf-3.5.1 版本  改造后的文本
+
+
+9.protobuf toObject是 会把服务器传过来的默认值 如0 给改成 null
+	修改这个问题
+	去 google-protobuf里面 找到
+		jspb.Message.setFieldIgnoringDefault_=function(a,b,c,d){c!=d?jspb.Message.setField(a,b,c):a.array[jspb.Message.getIndex_(a,b)]=null};
+	改成
+		jspb.Message.setFieldIgnoringDefault_=function(a,b,c,d){jspb.Message.setField(a,b,c)};
+
+	继续深化
+		但是我们发现 [] {} 明明服务器没有传值过来 客户端还是会读出默认值
+	我们在协议解析后，增加一步专门来处理它 去如下函数里走一遭
+// 去除获取到的协议对象的Undefined和空的{}、[]
+cc.js.clearUndefinedAndEmptyTable = function(obj) {
+    for (let key in obj) {
+        if (obj.hasOwnProperty(key)) {
+            let value = obj[key];
+            if (typeof value === "undefined") {
+                delete obj[key];
+            } else if (cc.js.isTable(value)) {
+                if (this.isArray(value) && value.length===0) {
+                    delete obj[key];
+                } else if (this.isObject(value) && Object.keys(value).length===0) {
+                    delete obj[key];
+                } else {
+                    this.clearUndefinedAndEmptyTable(value);
+                }
+            }
+        }
+    }
+};
+
+
+10.给项目安装 google-protobuf 模块
+	到项目目录下的任意位置 运行命令行
+		cd .
+		npm install google-protobuf
+		pause
+	即可自动安装
+	项目会多出目录 \node_modules\google-protobuf
