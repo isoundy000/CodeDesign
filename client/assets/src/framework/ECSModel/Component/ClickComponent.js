@@ -1,8 +1,11 @@
-// SafeClick Button
+// ClickComponent Button
 // 防止多次点击
 "use strict";
 cc.Class({
     extends: cc.Component,
+    editor: CC_EDITOR && {
+        menu: "自定义/ClickComponent",
+    },
     properties: {
         safeTime: {
             default: 0.5,

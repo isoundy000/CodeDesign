@@ -10,7 +10,7 @@ const Current = cc.Enum({
 cc.Class({
     extends: cc.PageView,
     editor: CC_EDITOR && {
-        menu: 'i18n:MAIN_MENU.component.ui/PageView',
+        menu: '自定义/NestedPageViewComponent',
         help: 'i18n:COMPONENT.help_url.pageview',
         inspector: 'packages://inspector/inspectors/comps/ccpageview.js',
         executeInEditMode: false

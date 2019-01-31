@@ -57,7 +57,9 @@ var getTimeInMilliseconds = function() {
 var pageView = cc.Class({
     // name : "ADPageView",
     extends: cc.Component,
-   
+    editor: CC_EDITOR && {
+        menu: "自定义/ADComponent",
+    },
     ctor: function () {
         this._curPageIdx = 0;
         this._pages = []; //数据

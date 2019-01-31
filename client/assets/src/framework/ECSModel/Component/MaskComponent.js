@@ -1,8 +1,11 @@
-// Mask
+// MaskComponent
 // 低版本橡皮檫 高版本还没有尝试
 
 cc.Class({
     extends: cc.Component,
+    editor: CC_EDITOR && {
+        menu: "自定义/MaskComponent",
+    },
     properties: {
     },
     onLoad() {

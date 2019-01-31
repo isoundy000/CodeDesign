@@ -233,4 +233,30 @@ cc.Class({
         }
     },
 
+
+    /**
+     * 延迟执行回调
+     * @param node
+     * @param time
+     * @param func
+     */
+    callDelay(node, time, func) {
+        let del = cc.delayTime(time);
+        let cal = cc.callFunc(func);
+        let seq = cc.sequence(del, cal);
+        node.runAction(seq);
+    },
+    /**
+     * 循环执行回调
+     * @param node
+     * @param time
+     * @param func
+     */
+    callScheduler(node, time, func) {
+        let del = cc.delayTime(time);
+        let cal = cc.callFunc(func);
+        let seq = cc.sequence(del, cal);
+        return node.runAction(cc.repeatForever(seq));
+    },
+
 });

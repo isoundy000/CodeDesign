@@ -1,7 +1,10 @@
-// ListView
+// ListViewComponent
 // 处理list view 消耗 问题
 cc.Class({
     extends: cc.Component,
+    editor: CC_EDITOR && {
+        menu: "自定义/ListViewComponent",
+    },
     properties: {
         // item template to instantiate other items
         itemTemplate: { 
