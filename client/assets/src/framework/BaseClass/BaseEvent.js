@@ -57,7 +57,7 @@ cc.Class({
     /*
     // 分发事件到事件流中。
     dispatchEvent = function (event) {
-     
+        this.emit(message, detail)
     };
     */
 });

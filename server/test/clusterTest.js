@@ -93,3 +93,11 @@
 // sendCommand(child1, "makeBreakfast");
 // sendCommand(child2, "makeLunch");
 // sendCommand(child3, "makeDinner");
+
+
+var list = {}
+list["a"] = {"name":"a","func":"do func"}
+list["b"] = {"name":"b","func":"do func"}
+'a' in list && delete list['a'];
+
+console.log(list)

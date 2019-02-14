@@ -35,6 +35,12 @@ cc.Class({
     extends: cc.Component,
 
     properties: {
+        persistNode: cc.Node,
+        persistPrefabs: {
+            type: cc.Prefab,
+            default: [],
+            tooltip: "需要常驻的组件按层次依次加进来",
+        },
     },
 
     // LIFE-CYCLE CALLBACKS:
@@ -46,6 +52,30 @@ cc.Class({
     start () {},
 
     // update (dt) {},
+
+    /**
+     * setSwallowTouches 事件吞噬
+     * 初始化常驻节点
+     * 声明常驻根节点，该节点不会被在场景切换中被销毁。
+     * 目标节点必须位于为层级的根节点，否则无效。
+     * addPersistRootNode 添加
+     * removePersistRootNode 移除
+     * isPersistRootNode 是否是
+     * 常驻节点无法中途获取所以需要用个全局变量来保存
+     */
+    _initPersist: function () {
+        let parent = this.persistNode;
+        parent.zIndex = 100;
+        cc.game.addPersistRootNode(parent);
+        window.GPersistNode = parent;
+        for (let i = 0; i < this.persistPrefabs.length; i++) {
+            if (this.persistPrefabs.hasOwnProperty(i) && this.persistPrefabs[i]) {
+                let node = cc.instantiate(this.persistPrefabs[i]);
+                parent.addChild(node);
+                parent[`_${node._name}`] = node.getComponent(node._name);
+            }
+        }
+    },
 
     // 获取URL数据
     initURLData(){
@@ -69,14 +99,14 @@ cc.Class({
     //后台暂停
     _pausedCallback(){
         this._isRestore = false;
-        this._remarkTime = cc.js.getLocalTime();
+        this._remarkTime = cc.js.getCurrentTime();
     },
     //前台恢复
     _restoreCallback(){
         if(!this._isRestore){ //防止二次调用
             this._isRestore = true;
             // 后台时间超过10秒就再重新登录
-            if(cc.js.getLocalTime() - this._remarkTime >= 10000){
+            if(cc.js.getCurrentTime() - this._remarkTime >= 10000){
                 GNetMgr.closeAllSocket();
                 this.startGame();
             }

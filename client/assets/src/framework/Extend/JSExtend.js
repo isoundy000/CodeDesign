@@ -194,11 +194,11 @@ js.dump = function (obj, des) {
     return str;
 };
 
-// 获取当前时间戳(毫秒)
-js.getLocalTime = function(){
+// 获取当前时间戳(毫秒) GTimeMgr.getCurrentTime()
+js.getCurrentTime = function(){
     return new Date().getTime();
 };
-// 当前时间转成这样的格式[09:34:02:00]
+// 当前时间转成这样的格式[09:34:02:00] GTimeMgr.getLogTime()
 js.getLogTime = function(){
     return (new Date()).Format("hh:mm:ss.S");
 };
