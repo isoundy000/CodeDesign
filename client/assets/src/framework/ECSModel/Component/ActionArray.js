@@ -370,15 +370,15 @@ module.exports = {
         run(node) {
             node._oldX = node.x;
             node._oldY = node.y;
-            let nodeScene = cc.director.getScene().__pageRootNode;
+            let frameSize = cc.view.getFrameSize();
             if (this.direction===screenEnum.top) {
-                node.y = nodeScene.height*0.5+node.height*node.anchorY;
+                node.y = frameSize.height*0.5+node.height*node.anchorY;
             } else if (this.direction===screenEnum.down) {
-                node.y = -nodeScene.height*0.5-node.height*(1-node.anchorY);
+                node.y = -frameSize.height*0.5-node.height*(1-node.anchorY);
             } else if (this.direction===screenEnum.left) {
-                node.x = -nodeScene.width*0.5-node.width*(1-node.anchorX);
+                node.x = -frameSize.width*0.5-node.width*(1-node.anchorX);
             } else if (this.direction===screenEnum.right) {
-                node.x = nodeScene.width*0.5+node.width*node.anchorX;
+                node.x = frameSize.width*0.5+node.width*node.anchorX;
             }
             node.runAction(cc.sequence(
                 cc.delayTime(this.delay/fpsAni),
@@ -407,15 +407,15 @@ module.exports = {
         run(node) {
             let x = node.x;
             let y = node.y;
-            let nodeScene = cc.director.getScene().__pageRootNode;
+            let frameSize = cc.view.getFrameSize();
             if (this.direction===screenEnum.top) {
-                y = nodeScene.height*0.5+node.height*node.anchorY;
+                y = frameSize.height*0.5+node.height*node.anchorY;
             } else if (this.direction===screenEnum.down) {
-                y = -nodeScene.height*0.5-node.height*(1-node.anchorY);
+                y = -frameSize.height*0.5-node.height*(1-node.anchorY);
             } else if (this.direction===screenEnum.left) {
-                x = -nodeScene.width*0.5-node.width*(1-node.anchorX);
+                x = -frameSize.width*0.5-node.width*(1-node.anchorX);
             } else if (this.direction===screenEnum.right) {
-                x = nodeScene.width*0.5+node.width*node.anchorX;
+                x = frameSize.width*0.5+node.width*node.anchorX;
             }
             node.runAction(cc.sequence(
                 cc.delayTime(this.delay/fpsAni),

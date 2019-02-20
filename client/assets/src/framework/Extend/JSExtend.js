@@ -147,11 +147,11 @@ js.isNullObject = function(obj){
 // };
 //有效
 js.isValid = function (value) {
-    return !(obj === null || obj === undefined || obj === NaN);
+    return !(value === null || value === undefined || value === NaN);
 };
 //无效
-js.isInvalid = function(){
-    return (obj === null || obj === undefined || obj === NaN);
+js.isInvalid = function(value){
+    return (value === null || value === undefined || value === NaN);
 };
 
 /*
