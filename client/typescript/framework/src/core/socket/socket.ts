@@ -94,17 +94,17 @@ export default class Socket{
     };
 
     private _socketEvent():void {
-        this._webSocket.onopen = function(obj:WebSocket,evt:MessageEvent){
+        this._webSocket.onopen = function(evt:MessageEvent){
             this._isOpen = true;
             this._stopTimeout();
             this._event(EventSocket.SOCKET_CONNECTED,null);
         }.bind(this);
 
-        this._webSocket.onmessage = function(obj:WebSocket,evt:MessageEvent) {
+        this._webSocket.onmessage = function(evt:MessageEvent) {
             this._event(EventSocket.SOCKET_RECEIVE, evt.data);
         }.bind(this);
 
-        this._webSocket.onclose = function(obj:WebSocket,evt:MessageEvent) {
+        this._webSocket.onclose = function(evt:MessageEvent) {
             this._isOpen = false;
             this._stopTimeout();
             if (!Util.isInvalid(this._webSocket)) {
@@ -114,7 +114,7 @@ export default class Socket{
             this._event(EventSocket.SOCKET_CLOSE,null);
         }.bind(this);
 
-        this._webSocket.onerror = function(obj:WebSocket,evt:MessageEvent) {
+        this._webSocket.onerror = function(evt:MessageEvent) {
             cc.log('socket error:' + evt)
             this._event(EventSocket.SOCKET_ERROR);
         }.bind(this);

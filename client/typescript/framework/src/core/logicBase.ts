@@ -3,6 +3,7 @@ import { Util } from "../tools/utils";
 import { EventCustom } from "./eventCustom";
 import { EventMessage, EventSocket } from "../events";
 import { Timer } from "../tools/timer";
+import { Protocol, protocolKeyById, protocolIdByKey } from "./socket/protocol";
 
 /**
  * 
@@ -14,6 +15,8 @@ const TimeKey={
 
 export default class LogicBase{
     protected _socketListener:SocketListener = null;
+    protected _openID:string = '';
+    protected _token:string = '';
     private _listenerName:string = '';
     private _isActive:boolean = false;
     private _gateway:any = null;
@@ -27,10 +30,20 @@ export default class LogicBase{
 
     constructor(logicName:string){
         this._socketListener = new SocketListener(logicName); // 默认绑定一个通用的网络处理，即大厅等
-        this._socketListener.startUpdate();     // 开启网络帧监听（默认心跳包处理）
-
         this._initEvent();
     };
+
+    public set token(val:string){
+        this._token = val;
+    };
+
+    public get Token():string{
+        return this._token;
+    };
+
+    public get OpenId():string{
+        return this._openID;
+    }
 
     public set active(val:boolean){
         this._isActive = val;
@@ -69,8 +82,12 @@ export default class LogicBase{
         return this._isPlayGame;
     };
 
-    public setGateway(gatewayInfo:any):void{
+    public setGateway(gatewayInfo:any,isConnect:boolean=false):void{
         this._gateway = gatewayInfo;
+        if (isConnect){
+            this._socketClose();
+            this._socketListener.connect(gatewayInfo.url);
+        }
     };
 
     public bindSocketListener(socket:SocketListener):Object{
@@ -96,11 +113,36 @@ export default class LogicBase{
         let self = this;
         EventCustom.on(EventMessage.SEND_MSG_TO_SVR,(protol:string,data:any)=>{
             if (!self._isActive || Util.isInvalid(self._socketListener) || !self._socketListener.isConnected()) return ;
+            self._sendData(protol,data);
         });
 
-        EventCustom.on(EventMessage.RECEIVE_MSG_BY_SVR,(protocol:string,data:any)=>{
-            self._isActive && EventCustom.emit(protocol,data);
+        EventCustom.on(EventMessage.RECEIVE_MSG_BY_SVR,(data:any)=>{
+            let _key = protocolIdByKey(data.Protocol2);
+            //let _tmpData = Util.deepCpy(data);
+            //delete _tmpData['Protocol'];
+            //delete _tmpData['Protocol2'];
+            // 心跳
+            if (data.Protocol === Protocol.Gateway_cmd.HeartBeat){
+                EventCustom.emit(EventSocket.SOCKET_HEART_BEAT,data);
+            } else if (data.Protocol === Protocol.Gateway_cmd.Relink){
+                //  数据格式错误
+                if (data.Protocol2 === 1){
+                    let _err = '['+ data.ErrCode +'] ' +data.ErrMsg;
+                    cc.error(_err);
+                    EventCustom.emit(EventMessage.SHOW_SIMPLE_TIPS_MSG,_err);
+                }
+                /**短线重连 */
+            } else if (data.Protocol === Protocol.Gateway_cmd.Main){
+                if (self._isActive){
+                    let _str = '[recSvrMsg]'+ Util.printObject(data);
+                    cc.log(_str);
+                    EventCustom.emit(_key,data);
+                }
+            } else if (data.Protocol === Protocol.Gateway_cmd.Logout){
+
+            }
         });
+
         EventCustom.on(EventMessage.CONNECT_EVENT,(event:string,data:any)=>{
             if (!self._isActive) return ;
 
@@ -151,7 +193,7 @@ export default class LogicBase{
     };
 
     private _reconnect():void{
-        if (this._socketListener.isNeedReconnect() && this._countdown.reconnectCount-- > 0){
+        if (this._socketListener.isNeedReconnect() && --this._countdown.reconnectCount >= 0){
             this._connectTipsView(true);
             this._isReconnecting = true;
             if (this._isPlayGame){
@@ -166,7 +208,7 @@ export default class LogicBase{
                 this._startTimer(TimeKey.TIME_CONNECT, this._onStepTimeout.bind(this), this._heartBeat.reloginTimeout);
                 this._socketListener.cleanSendQueue();
                 this._socketListener.setConnectLevel(1);
-                this._socketListener.isConnect();
+                this._socketListener.connect();
             }
         }else
             this._onReconectTimeout();
@@ -204,14 +246,13 @@ export default class LogicBase{
 
     private _onLogin():void{
         this._socketListener.cleanSendQueue();
-        let _key = 'C2GWS_PlayerLogin';
         let _data = {};
         if (this._isPlayGame){
             // 进入房间操作
         } else {
-            //require('UserInfoLogic').instance().requestUserInfo(true);
+            
         }
-        EventCustom.emit(EventMessage.SEND_MSG_TO_SVR,_key,_data);
+        this._sendData('C2GWS_PlayerLogin',_data);
     };
 
     private _onReconnectFinish():void{
@@ -284,5 +325,24 @@ export default class LogicBase{
             return;
         }
         // 失败处理
+    };
+
+    private _sendData(protolName:string, data:any):void{
+        let _subCmd:number = protocolKeyById(protolName) || -1;
+        if (isNaN(_subCmd) || _subCmd < 0){
+            cc.error(protolName+' is a non-existent protocol.');
+            return ;
+        }
+        data = data || {};
+        data.Protocol = Protocol.Gateway_cmd.Main;
+        data.Protocol2 = _subCmd;
+        data.sign = 0;
+        data.OpenID = this._openID;
+        data.Token = this._token;
+        data.Timestamp= Timer.getLocalTime(false);
+        let _result = this._socketListener.sendData(data);
+        let _str = 'send msg '+(_result?'success.':'failure.');
+        _str += protolName+'='+Util.printObject(data);
+        cc.log(_str);
     };
 };

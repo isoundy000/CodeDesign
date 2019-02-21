@@ -1,8 +1,6 @@
 import NetConnect from "./connect";
 import { Util } from "../../tools/utils";
-import Config from "../../config";
-import { DES } from "../thirdlibs/des";
-import { protocolIdByKey, Protocol } from "./protocol";
+import DES from "../thirdlibs/des";
 import { EventCustom } from "../eventCustom";
 import { EventMessage, EventSocket } from "../../events";
 
@@ -12,6 +10,7 @@ import { EventMessage, EventSocket } from "../../events";
  * 负责前端发送数据前打包和接收到后端数据解析
  */
 
+const BINARY:boolean = false;
 export default class SocketListener{
     private _netConnect:NetConnect = null;                 // 网络链接层
     private _sendList:Array<any> = new Array<any>();       // 发送队列
@@ -23,10 +22,30 @@ export default class SocketListener{
     private _url:string = '';                              // 连接地址
     private _isPauseDispatcher:boolean=false;              // 是否暂停调度
     private _instanceId:string='';                         // 开启引擎帧刷新ID
-    
+
     constructor(svrName:string){
-        this._netConnect = new NetConnect(this._event);
         this._name = svrName;
+
+        let self = this;
+        this._netConnect = new NetConnect(function(eventName:string,data?:any){
+            eventName = 'socket_' + eventName;
+            if (eventName === EventSocket.SOCKET_RECEIVE){
+                if (typeof data === 'string')
+                    self._recvList.push({data});
+                else {
+                    for (let i in data)
+                        self._recvList.push(data[i]);
+                }
+
+                if (self._recvList.length > 0 && !self._isPauseDispatcher) {
+                    let count = self._datasParser();
+                    if (count > 0) self._recvList.splice(0, count);
+                }
+                return ;
+            }
+
+            EventCustom.emit(EventMessage.CONNECT_EVENT,eventName, data);
+        }.bind(this));
     };
 
     public setIp(ip:string,port:number):SocketListener{
@@ -54,7 +73,28 @@ export default class SocketListener{
         return this._name;
     };
 
-    public isConnect(url?:string):boolean{
+    /**
+     * 
+     * @param uid : string
+     * @param lv : ConnectLevel
+     * @param type : DefenseType
+     * @param key : encode key
+     */
+    public setNetConfig(uid:string,lv:number=0,type:number=3,key:string=''):void{
+        this._netConnect.setUID(uid);
+        this._netConnect.setLevel(lv);
+        this._netConnect.setConnectLevel(lv);
+        this._netConnect.setConfig({
+            dns: '',
+            ddns:[''],
+            types: [type],
+            retry: [10],
+            clv: lv >= 0, //开启连接等级
+            encodeKey:key //加密设置
+        });
+    };
+
+    public connect(url?:string):boolean{
         url = Util.isEmptyStr(url) ? this._url : url;
         //备份最后一次连接
         this._url = url;
@@ -154,7 +194,8 @@ export default class SocketListener{
 
     public startUpdate():void{
         this._instanceId = 'socketlistener' + Math.floor(Math.random() * 1000000);
-        cc.director.getScheduler().scheduleUpdate(this, 1, false);
+        //cc.Scheduler.
+        //cc.director.getScheduler().scheduleUpdate(this, 1, false);
     };
 
     public update(dt) {
@@ -193,25 +234,17 @@ export default class SocketListener{
         for (let i in this._recvList) {
             let _data = this._recvList[i];
             try {
-                if (Config.isBinary){
+                let _pack:any = null;
+                if (BINARY){
 
                 } else {
-                    let _pack = JSON.parse(DES.decodeBase64(_data));
-
-                    // 心跳
-                    if (_pack.Protocol2 === Protocol.Gateway_cmd.GateWay_HeartBeat){
-                        EventCustom.emit(EventSocket.SOCKET_HEART_BEAT,_data);
-                        return ;
-                    }
-                    let protocolName = protocolIdByKey(_pack.Protocol2);
-                    delete _pack.Protocol;
-                    delete _pack.Protocol2;
-                    if (this._isLog(protocolName)) cc.log("[%s] rcve protocol %s", this._name, protocolName);
-                    EventCustom.emit(EventMessage.RECEIVE_MSG_BY_SVR,protocolName, _pack);
+                    _pack = JSON.parse(DES.decodeBase64(_data.data));
+                }
+                if (typeof _pack === 'object'){
+                    EventCustom.emit(EventMessage.RECEIVE_MSG_BY_SVR,_pack);
                 }
             } catch (e) {
                 cc.error(e);
-                window.onerror("DataParser Error: " + e, "NetServerBase", 0, 0, e);
             }
 
             count++;
@@ -228,26 +261,13 @@ export default class SocketListener{
         return 'ws://'+ip+':'+port+'/ws';
     }
 
-    private _event(eventName:string,data?:any):void{
-        if (eventName === EventSocket.SOCKET_RECEIVE){
-            for (let i in data)
-                this._recvList.push(data[i]);
-
-            if (this._recvList.length > 0 && !this._isPauseDispatcher) {
-                let count = this._datasParser();
-                if (count > 0) this._recvList.splice(0, count);
-            }
-            return ;
-        }
-        EventCustom.emit(EventMessage.CONNECT_EVENT,eventName, data);
-    };
-
     // 编码
     private _encodeData(data:any):any{
-        if (Config.isBinary){
+        if (BINARY){
             // 二进制编码
         } else {
             // 字符串编码
+            data = JSON.stringify(data);
         }
         return data;
     };
@@ -256,7 +276,7 @@ export default class SocketListener{
     private _decodeData(data:any):any{
         let _data:any = null;
         let _eventKey:string = '';
-        if (Config.isBinary){
+        if (BINARY){
             // 二进制解码
         } else {
             // 字符串解码

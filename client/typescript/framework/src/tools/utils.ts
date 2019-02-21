@@ -27,26 +27,6 @@ class CUtil{
         return CUtil._instance;
     };
 
-    public getLanguageByKey(key:string,...args:any[]):string{
-        let _getStr = ()=>{
-            let _str = this._language[key];
-            if (!this.isEmptyStr(_str))
-                return this.format(_str,args);
-            else
-                return 'language.json=>The key is empty.';
-        };
-
-        if (this.isInvalid(this._language)){
-            cc.loader.loadRes('framework/language',(err,res)=>{
-                if (err != null)
-                    throw new Error(err.message);
-
-                this._language = res.json?res.json:res;
-                _getStr();
-            });
-        } else return _getStr();
-    };
-
     // 对象是否有效
     public isValid<T>(obj:T):boolean{
         return obj !== null && obj !== undefined;
@@ -164,48 +144,111 @@ class CUtil{
         return _str;
     };
 
-    public deepCpy(dec:Object, source:Object):Object{
+    public getDataType(o:any):string{
+        if (o===null) 
+            return 'Null';
+        else if (o===undefined) 
+            return 'Undefined';
+        else
+            return Object.prototype.toString.call(o).slice(8,-1);
+    };
+
+    public deepCpy(source:Object):any{
         if (this.isInvalid(source))
             return null;
 
-        for (let key in source) {
-            if (source.hasOwnProperty(key)) {
-                if (typeof source[key] === 'object')
-                    dec[key] = this.deepCpy(dec,source[key]);   //递归复制
-                else
-                    dec[key] = source[key];
-            }
+        let _type = this.getDataType(source);
+        let _result:any = null;
+        if (_type === 'Array')
+            _result = [];
+        else if (_type === 'Object')
+            _result = {};
+        else
+            return source;
+
+        for (let k in source){
+            let _tmp:any = source[k];
+            _type = this.getDataType(_tmp);
+            
+            if (_type == 'Array' || _type == 'Object')
+                _result[k]=arguments.callee(_tmp);//递归调用
+            else
+                _result[k]=_tmp;
         }
-        return dec;
+        return _result;
+    };
+
+    public printObject(objIn:object, descript?:string):string{
+        let strAll = descript != null ? descript + "=" : "";
+        let _isTable = function(obj):boolean{
+            return obj !== null && typeof obj === 'object'
+        };
+        let _isFunction = function(obj):boolean{
+            return obj !== null && typeof obj === 'function'
+        };
+        if (!_isTable(objIn)) {
+            return strAll + objIn;
+        }
+
+        let _dump = function(obj, kongGe){
+            strAll += "{";
+            let haveValue = false
+            let newKong = kongGe + "    "
+            for (let key in obj) {
+                let value = obj[key];
+                if (_isFunction(value))
+                    break;
+                haveValue = true
+                strAll += "\n" + newKong + key + ": "
+                if (_isTable((value)))
+                    _dump(value, newKong);
+                else
+                    strAll += value + ',';
+            }
+            if (haveValue)
+                strAll += "\n" + kongGe + "},";
+            else
+                strAll += "}";
+        };
+        _dump(objIn, "");
+        return strAll;
     };
     
     // 将source合并到des的尾部，返回合并后结果
-    public mergeObject(des:Object,source:Array<Object>):Object{
-        if (this.isInvalid(des) || this.isInvalid(source) || source.length < 1) return null;
+    public mergeObject(des:Object,source:Object|Array<Object>):Object{
+        if (this.isInvalid(source) || (Array.isArray(source) && source.length < 1)) return null;
+        if (this.isInvalid(des)) des = {};
 
-        source.forEach((it:Object)=>{
-            if (this.isInvalid(it) || !(it instanceof Object)) return des;
-            for (let key in it){
-                if(it.hasOwnProperty(key) && (!des.hasOwnProperty(key)))
-                    des[key]=it[key];
-            }
-        });
+        if (Array.isArray(source)){
+            source.forEach((it:Object)=>{
+                if (this.isInvalid(it) || !(it instanceof Object)) return des;
+                for (let key in it){
+                    if(it.hasOwnProperty(key) && (!des.hasOwnProperty(key)))
+                        des[key]=it[key];
+                }
+            });
+        } //else this.deepCpy(des, source);
 
         return des;
     };
     
     // 将source从des中移除
-    public removeObject(des:Object,source:Array<Object>):Object{
+    public removeObject(des:Object,source:Object|Array<Object>):Object{
         if (this.isInvalid(des)) return null;
-        if (this.isInvalid(source) || source.length < 1) return des;
-        
-        source.forEach((it:Object)=>{
-            if (this.isInvalid(it) || !(it instanceof Object)) return des;
-            for (let key in it){
-                if(it.hasOwnProperty(key) && des.hasOwnProperty(key))
-                delete des[key];
-            }
-        });
+        if (this.isInvalid(source) || (Array.isArray(source) && source.length < 1)) return des;
+
+        if (Array.isArray(source)){
+            source.forEach((it:Object)=>{
+                if (this.isInvalid(it) || !(it instanceof Object)) return des;
+                for (let key in it){
+                    if(it.hasOwnProperty(key) && des.hasOwnProperty(key))
+                    delete des[key];
+                }
+            });
+        } else {
+            for (let k in source)
+                des.hasOwnProperty(k) && delete des[k];
+        }
     };
 
     // obj中val是唯一的
@@ -308,6 +351,15 @@ class CUtil{
         return -1;
     };
 
-    
+    /**
+     * 将日期字符串转化为时间
+     * @param strDaste xxxx-xx-xx xx:xx:xx
+     * return number
+     */
+    public getTimerByStr(strDaste:string):number{
+        let _timer:any = this.isEmptyStr(strDaste)?0:strDaste;
+        _timer = (new Date(strDaste.replace(/-/g,'/'))).getTime();
+        return _timer;
+    };
 };
 export const Util:CUtil = CUtil.getInstance();

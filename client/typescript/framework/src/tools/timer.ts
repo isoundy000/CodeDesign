@@ -10,6 +10,7 @@ class CTimer{
     private _isLockChanged:boolean =false;
     private _removeList:Array<any>=new Array<any>();
     private _instanceId:string = '';
+    private _localTime:number = 0;
 
     private static _instance:CTimer = null;
     public static getInstance():CTimer{
@@ -112,6 +113,11 @@ class CTimer{
 
     public stopAll():void{
         cc.js.clear(this._maps);
+    };
+
+    public getLocalTime(isNumber:boolean = true):any{
+        let _time = (new Date()).getTime();
+        return isNumber ? _time : _time.toString();
     };
 
 };

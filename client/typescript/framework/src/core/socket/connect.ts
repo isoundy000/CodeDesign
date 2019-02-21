@@ -6,8 +6,8 @@
 import Socket from './socket';
 import { Util } from '../../tools/utils';
 import { HttpClient, Http } from './http';
-import { DES } from '../thirdlibs/des';
-import Config from '../../config';
+import { EventSocket } from '../../events';
+import DES from '../thirdlibs/des';
 
 // 防护配置
 interface DefenseData{
@@ -16,7 +16,7 @@ interface DefenseData{
     types: Array<any>,
     retry: Array<any>,
     clv: boolean, //开启连接等级
-    encode: boolean //加密设置
+    encodeKey: string // 加密密钥
 };
 
 // 连接安全系数
@@ -34,8 +34,8 @@ enum DefenseType{
     auto    = 3,     // 自动识别 DNS / aliYun
 };
 
-
-let ENCODE_KEY:string = Config.isBinary?'':'';
+const BINARY:boolean = false;
+let ENCODE_KEY:string = '';
 const TIME_OUT:number = 4500;
 // 直接连接
 class SocketDefense {
@@ -56,8 +56,7 @@ class SocketDefense {
         this.cbSucceed = succeed;
         this.cbFailed = failed;
         this.svrUrl = url;
-        this.socket = new Socket(Config.isBinary,this.onMessage.bind(this));
-        this.socket.connect(url,TIME_OUT);
+        Util.isInvalid(this.socket) ? this._startConnect(url) : this.socket.connect(url,TIME_OUT);
     };
 
     public setMaxReconnectCount(val:number):void{
@@ -78,14 +77,6 @@ class SocketDefense {
             return false;
 
         return this.socket.send(data);
-    };
-
-    public onMessage(event:string, data:any) {
-        switch (event) {
-            case 'receive': break;
-            case 'connected':this.onOpen();break;
-            case 'close': this.onClose();break;
-        }
     };
 
     public onOpen(){
@@ -119,6 +110,26 @@ class SocketDefense {
             this.cbFailed = null;
             setTimeout(cb.bind(this, this), 0);
         }
+    };
+
+    public onMessage(event:string, data:any):void{/**覆盖使用 */};
+
+    protected _startConnect(url:string):boolean {
+        this.socket = new Socket(BINARY,function(event:string, data:any){
+            switch (event) {
+                case EventSocket.SOCKET_RECEIVE: this.onMessage(data);break;
+                case EventSocket.SOCKET_CONNECTED:this.onOpen();break;
+                case EventSocket.SOCKET_CLOSE: this.onClose();break;
+            }
+        }.bind(this));
+
+        if (Util.startWith(url,'ws://')) {
+            return this.socket.connect(url,TIME_OUT);
+        } else {
+            let wsurl = 'ws://' + (Util.getDomainPort(url) || url) + '/ws';
+            return this.socket.connect(wsurl,TIME_OUT);
+        }
+        return false;
     };
 
     private _tryConnect():boolean{
@@ -156,8 +167,8 @@ class SocketDNS extends SocketDefense{
         }
     };
 
-    public connect(url:string) {
-        if (this.cfg.svrUrls && this.cfg.svrUrls[url] && this.startConnect(this.cfg.svrUrls[url])) {
+    public connect(url:string, succeed:(obj:SocketDefense)=>void, failed:(obj:SocketDefense)=>void) {
+        if (this.cfg.svrUrls && this.cfg.svrUrls[url] && this._startConnect(this.cfg.svrUrls[url])) {
             cc.log('cfg has ', this.cfg.svrUrls[url]);
         } else if (this.cfg.level == null && this.cfg.dns) {
             this._getDefaultUrl(this.cfg.dns, url);
@@ -166,7 +177,7 @@ class SocketDNS extends SocketDefense{
         } else if (this.cfg.dns) {
             let key = 'dns' + String(this.cfg.defense);
             cc.log('sub_dns:', this.cfg.dns, key);
-    
+
             this._http = Http.Post(this.cfg.dns, this._postKey(key), function (errorcode:number, data:any) {
                 this.http = null;
                 data = DES.decodeBase64(data);
@@ -178,7 +189,9 @@ class SocketDNS extends SocketDefense{
                     this._connect(url);
                 } else this._onClose();
             }.bind(this), 3000);
-        } else this.socket.connect(url, TIME_OUT);
+        }
+
+        super.connect(url,succeed,failed);
     };
 
     private _getNewUrl(dnsurl, url) {
@@ -228,18 +241,13 @@ class SocketDNS extends SocketDefense{
         }.bind(this), 3000);
     };
 
-    public startConnect(url:string) {
-        if (this.socket === null) {
+    protected _startConnect(url:string):boolean {
+        /*if (this.socket === null) {
             cc.log('this.socket is null'); //应该是http没关闭，逻辑太复杂，先暂时这样规避
             return false;
-        }
+        }*/
 
-        if (Util.startWith(url,'ws')) {
-            return this.socket.connect(url,TIME_OUT);
-        } else {
-            let wsurl = 'ws://' + (Util.getDomainPort(url) || url) + '/ws';
-            return this.socket.connect(wsurl,TIME_OUT);
-        }
+        return super._startConnect(url);
     };
 
     private _postKey(urlStr:string) {
@@ -256,7 +264,7 @@ class SocketAliYun extends SocketDNS{
         this._isAllow206 = false;
     };
 
-    public startConnect(url:string) {
+    protected _startConnect(url:string) {
         if (Util.startWith('ws://','')) {//URL直连
             return this.socket.connect(url,TIME_OUT);
         } else { //游戏分组，查找分组IP
@@ -282,18 +290,20 @@ class SocketAliYun extends SocketDNS{
             cc.log('Alidun connect failed. ', url, ip, port);
             return false;
         }
+
+        return super._startConnect(url);
     };
 
-    public connect(url:string) {
+    public connect(url:string, succeed:(obj:SocketDefense)=>void, failed:(obj:SocketDefense)=>void) {
         //已经拿到过url时，直连
-        if (this.cfg.svrUrls && this.cfg.svrUrls[url] && this.startConnect(this.cfg.svrUrls[url])) {
+        if (this.cfg.svrUrls && this.cfg.svrUrls[url] && this._startConnect(this.cfg.svrUrls[url])) {
             cc.log('Config has ip ', this.cfg.svrUrls[url]);
             return;
-        } else if (!Util.isEmptyStr(this._userGroup) && this.startConnect(this._userGroup)) {
+        } else if (!Util.isEmptyStr(this._userGroup) && this._startConnect(this._userGroup)) {
             cc.log('Config has UserGroup ', this.cfg.UserGroup);
             return;
         }
-        this.socket.connect(url, TIME_OUT);
+        super.connect(url,succeed,failed);
     };
 
     public onClose() {
@@ -305,19 +315,20 @@ class SocketAliYun extends SocketDNS{
  // 自动识别
 class SocketAuto extends SocketDNS{
     private _dnsType:number = DefenseType.auto; // enum DefenseType
-    protected _startConnect(utl:string) {
-        if (!Util.isEmptyStr(utl)){
+
+    protected _startConnect(url:string) {
+        if (!Util.isEmptyStr(url)){
             if (this._dnsType === -1){
-                if (utl.search('aliyungf.com') >=0){
+                if (url.search('aliyungf.com') >=0){
                     this._dnsType = 2; // DefenseType.ali
-                    Util.deepCpy(this,SocketAliYun);
+                    //Util.deepCpy(this,SocketAliYun);
                 }else{
                     this._dnsType = 1; // DefenseType.dns
-                    Util.deepCpy(this,SocketDNS);
+                    //Util.deepCpy(this,SocketDNS);
                 }
             }
         }
-        return false;
+        return super._startConnect(url);
     };
 };
 
@@ -335,7 +346,7 @@ export default class NetConnect{
     private _uid:string = '';
     private _connectLv:ConnectLevel = ConnectLevel.normal;
     private _defenseLv:ConnectLevel = ConnectLevel.unknow;
-    private _defenseCfg:DefenseData={dns:'',types:[],retry:[],ddns:{},clv:false,encode:true};
+    private _defenseCfg:DefenseData={dns:'',types:[],retry:[],ddns:{},clv:false,encodeKey:''};
     private _socket:SocketDefense=null;
     private _lastConnectUrl:string='';
     private _listenerHand:(event:string,data?:any)=>void = null;
@@ -376,16 +387,15 @@ export default class NetConnect{
 
     };
 
-    SetUID(uid:string) {
+    setUID(uid:string) {
         this._uid = uid;
         cc.sys.localStorage.setItem("UID", uid);
     };
 
-    SetConfig(cfg:DefenseData) {
+    setConfig(cfg:DefenseData) {
         if (!Util.isInvalid(cfg) && cfg instanceof Object){
             this._defenseCfg = cfg;
-            if (this._defenseCfg.encode === false)
-            ENCODE_KEY = '';
+            ENCODE_KEY = this._defenseCfg.encodeKey;
         }
     };
 
@@ -414,7 +424,7 @@ export default class NetConnect{
             this._defenseLv = this._connectLv;
 
         this.close();
-        if (this.startConnect(url))
+        if (this._startConnect(url))
             return true;
         setTimeout(this._onclose.bind(this), 0);
         return false;
@@ -426,18 +436,17 @@ export default class NetConnect{
         return false;
     };
 
-    public startConnect(url?:string):boolean{
+    private _startConnect(url?:string):boolean{
         if (Util.isEmptyStr(url)) url = this._lastConnectUrl;
-
         if (Util.isEmptyStr(url)) return false;
 
-        this._lastConnectUrl = url;
+        if (url.search('w')) this._lastConnectUrl = url;
         let _socket:SocketDefense = null;
 
-        if (this._defenseCfg && this._defenseCfg.dns && this._defenseCfg.types && this._defenseCfg.types.length > 0) {
+        if (this._defenseCfg && Util.isValid(this._defenseCfg.dns) && this._defenseCfg.types && this._defenseCfg.types.length > 0) {
             if (this._defenseLv >= this._defenseCfg.types.length) this._defenseLv = ConnectLevel.normal;
 
-            this._defenseCfg.ddns = this._defenseCfg.ddns || {};
+            this._defenseCfg.ddns = this._defenseCfg.ddns || [];
             this._defenseCfg.ddns[this._defenseLv] = this._defenseCfg.ddns[this._defenseLv] || {
                 dns: this._defenseCfg.dns,
                 subdns: null,
@@ -463,20 +472,19 @@ export default class NetConnect{
                 case DefenseType.dns: _socket = new SocketDNS(cfg);break;
                 case DefenseType.aliYun:_socket = new SocketAliYun(cfg);break;
                 case DefenseType.auto:_socket = new SocketAuto(cfg);break;
-                default:_socket = new SocketSkip(cfg);break;
+                default:_socket = new SocketDefense(cfg);break;
             }
 
-            let retryCount = this._defenseCfg.retry && this._defenseCfg.retry[this._defenseLv];
-            if (_socket && retryCount != null)
-                _socket.setMaxReconnectCount(Number(retryCount));
-        } else
-            _socket = new SocketDefense(this._defenseCfg);
+            let retryCount:number = this._defenseCfg.retry && this._defenseCfg.retry[this._defenseLv];
+            if (retryCount != null) _socket.setMaxReconnectCount(Number(retryCount));
+            if (!Util.isInvalid(_socket)) {
+                _socket.connect(url, this._onSucceed.bind(this), this._onFailed.bind(this));
+                this._socket = _socket;
+                return true;
+            }
+        }/* else
+            _socket = new SocketDefense(this._defenseCfg);*/
 
-        if (!Util.isInvalid(_socket)) {
-            this._socket = _socket;
-            _socket.connect(url, this._onSucceed.bind(this), this._onFailed.bind(this));
-            return true;
-        }
         return false;
     };    
 
@@ -499,7 +507,7 @@ export default class NetConnect{
         if (this._socket) {
             if (this._defenseLv < this._defenseCfg.types.length - 1) {
                 this._defenseLv++;
-                if (this.startConnect())
+                if (this._startConnect())
                     return;
             } else {
                 this._defenseLv = ConnectLevel.normal;

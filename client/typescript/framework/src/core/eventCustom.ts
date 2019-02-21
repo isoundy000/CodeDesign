@@ -34,7 +34,8 @@ class CEventCustom {
             target = target.node;
 
         let _call = (event:cc.Event.EventCustom)=>{
-            cb(event.detail,event);
+            let _params = event.detail;
+            cb(_params[0],_params[1],_params[2],_params[3],_params[4]);
         };
 
         if (target instanceof cc.Node){

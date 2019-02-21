@@ -5,12 +5,11 @@
  */
 
 export const Protocol = {
-    Gateway_main_cmd:6,                                // 网关主协议命令
-
-    Gateway_cmd:{                                 // 网关子协议命令
-        GateWay_HeartBeat:3,                      // 心跳协议
-        GateWay_Relink:4,                         // 断线重连
-	    GateWay_Logout:13,                        // 玩家登出
+    Gateway_cmd:{                           // 网关子协议命令
+        HeartBeat:3,                        // 心跳协议
+        Relink:4,                           // 断线重连
+        Main:6,                             // 网关主协议命令
+	    Logout:13,                          // 玩家登出
     },
 
     BroadCast_cmd:{                               // 广播协议
@@ -23,6 +22,16 @@ export const Protocol = {
     Hall_cmd:{
         C2GWS_PlayerLogin:1,                 // C2GWS_PlayerLogin == 1 登陆协议
         S2GWS_PlayerLogin:2,                 // S2GWS_PlayerLogin == 2
+
+        // 邮件系统
+        C2GWS_GetPlayerEmailList:23,         // C2GWS_GetPlayerEmailList == 23   获取邮件列表
+        S2GWS_GetPlayerEmailList:24,         // S2GWS_GetPlayerEmailList == 24
+
+        C2GWS_ReadOrDelPlayerEmail:25,       // C2GWS_ReadOrDelPlayerEmail == 25   读取或者删除
+        S2GWS_ReadOrDelPlayerEmail:26        // S2GWS_ReadOrDelPlayerEmail == 26
+    },
+
+    Game_cmd:{
         C2GWS_PlayerChooseGame:5,            // C2GWS_PlayerChooseGame == 5  // 玩家选择游戏
         S2GWS_PlayerChooseGame:6,            // S2GWS_PlayerChooseGame == 6
         C2GWS_PlayerChooseGameMode:7,        // C2GWS_PlayerChooseGameMode == 7  // 玩家选择游戏模式
@@ -33,7 +42,7 @@ export const Protocol = {
         S2GWS_QuitMatch:12,                  // S2GWS_QuitMatch == 12
     },
 
-    Game_cmd:{
+    SubGame_cmd:{
         /**子游戏协议附加块 */
     }
 };

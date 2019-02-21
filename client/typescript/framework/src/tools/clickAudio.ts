@@ -1,8 +1,9 @@
 import { AudioPlay } from "./audio";
 
-const {ccclass, property} = cc._decorator;
+const {ccclass, property,menu} = cc._decorator;
 
 @ccclass
+@menu("自定义插件/控件点击音效")
 export default class ClickAudio extends cc.Component {
     soundName:string = "framework/sound/click.mp3";
 

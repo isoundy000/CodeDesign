@@ -1,6 +1,5 @@
 import { Util } from "./utils";
-import Config from "../config";
-
+import { ResMgr } from "../core/resourcesMgr";
 const LOG_LENGTH:number = 200;
 
 class Trace{
@@ -19,7 +18,7 @@ class Trace{
             return ;
 
         _msg = this._getTimeString() + _msg;
-        Config.isDevelop && console.log(_msg);
+        ResMgr.getCfg('isTrace') && console.log(_msg);
         this._recordLog(_msg);
     };
 
@@ -29,7 +28,7 @@ class Trace{
             return ;
 
         _msg = this._getTimeString() + _msg;
-        Config.isDevelop && console.warn(_msg);
+        ResMgr.getCfg('isTrace') && console.warn(_msg);
         this._recordLog(_msg);
     };
 
@@ -40,9 +39,9 @@ class Trace{
 
         _msg = this._getTimeString() + _msg;
 
-        Config.isDevelop && console.error(_msg);
+        ResMgr.getCfg('isTrace') && console.error(_msg);
         this._recordLog(_msg);
-    };;
+    };
 
     public getAll():string{
         let _msg = "";

@@ -5,8 +5,8 @@
 const {ccclass, property,menu} = cc._decorator;
 
 @ccclass
-@menu("自定义/TableView")
-export default class TableView extends cc.ScrollView {
+@menu("自定义控件/TableView")
+export class TableView extends cc.ScrollView {
 
     @property({type:cc.Node,tooltip: "item节点，与itemPrefab互斥"})
     itemNode:cc.Node = null;

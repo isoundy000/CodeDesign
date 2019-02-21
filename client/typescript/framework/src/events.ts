@@ -24,4 +24,6 @@ export const EventMessage={
     SHOW_SIMPLE_TIPS_MSG:'show_simple_tips_msg',                // 展示一条简单tips
     INSET_SUB_PROTOCOL:'inset_sub_protocol',                    // 插入子协议
     REMOVE_SUB_PROTOCOL:'remove_sub_protocol',                  // 移除子协议
+    SHOW_RED_DOT:'show_red_dot',                                // 显示小红点
+    HIDE_RED_DOT:'hide_red_dot',                                // 隐藏小红点
 }

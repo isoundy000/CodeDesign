@@ -118,7 +118,7 @@ export class HttpClient{
 
         this._httpHand = setTimeout(()=>{
             xhr.abort();
-            onerror();
+            this.connect(data);
         }, this._timeout);
 
         this._xhr = xhr;
